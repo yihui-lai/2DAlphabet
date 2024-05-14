@@ -39,7 +39,7 @@
   "GLOBAL": {
     "FILE": "ZH_H4b_Zmumu_$process.root",
     "HIST": "hMH_vs_MPnetA_$region",
-    "path": "/afs/cern.ch/user/h/hboucham/work/H4B/CMSSW_13_1_0_pre4/src/demo-luna-framework/histo/plots_mu/root",
+    "path": "/eos/user/h/hboucham/Haa4b/2D_Alphabet_root",
     "SIGNAME": ["SUSY_ZH_M-55"]
   },
 
@@ -50,7 +50,9 @@
         "TITLE": "m_{H} (GeV)",
         "MIN": 0,
         "MAX": 300,
-        "NBINS": 30
+        "NBINS": 30,
+        "SIGSTART": 100,
+        "SIGEND": 140
       },
       "Y": {
         "NAME": "MASS_A",
@@ -70,9 +72,9 @@
   },
 
   "OPTIONS": {
-    "plotPrefitSigInFitB": True,
-    "plotUncerts": False,
-    "plotTitles": False,
+    "plotPrefitSigInFitB": true,
+    "plotUncerts": false,
+    "plotTitles": false,
     "year": 1
   }
 }
