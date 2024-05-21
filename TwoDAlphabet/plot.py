@@ -577,7 +577,7 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
     data.GetXaxis().SetTitleSize(0.09)
     data.GetXaxis().SetLabelOffset(0.05)
     data.GetYaxis().SetNdivisions(508)
-    data.SetMaximum(1.35*data.GetMaximum())
+    data.SetMaximum(1.35*max(data.GetMaximum(), totalBkg.GetMaximum()))
 
     if len(bkgs) == 0:
         data.SetTitle(title)
@@ -651,7 +651,7 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         legend_info = []
         for bkg in bkgs:     # Won't loop if bkglist is empty
             if logyFlag:
-                bkg.SetMinimum(1e-3)
+                bkg.SetMinimum(1e-2)
             stack.Add(bkg)
             legend_info.append((bkg.GetTitle().split(',')[0], bkg))
 
@@ -666,14 +666,16 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         main_pad.cd()
         if logyFlag:
             main_pad.SetLogy()
-            data.SetMaximum(50*data.GetMaximum())
-            data.SetMinimum(1e-3)
-            totalBkg.SetMinimum(1e-3)
-            totalBkg_err.SetMinimum(1e-3)
-            stack.SetMinimum(1e-3)
-            for sig in signals: sig.SetMinimum(1e-3)
+            data.SetMaximum(50*max(data.GetMaximum(), totalBkg.GetMaximum()))
+            data.SetMinimum(1e-2)
+            totalBkg.SetMinimum(1e-2)
+            totalBkg_err.SetMinimum(1e-2)
+            stack.SetMinimum(1e-2)
+            for sig in signals: sig.SetMinimum(1e-2)
             
             # main_pad.RedrawAxis()
+        if len(signals) > 0:
+            data.SetMaximum(1.35*max(max(data.GetMaximum(), totalBkg.GetMaximum()),signals[0].GetMaximum()))
         data.Draw(datastyle)
         stack.Draw('hist same') # need to draw twice because the axis doesn't exist for modification until drawing
         try:    stack.GetYaxis().SetNdivisions(508)
