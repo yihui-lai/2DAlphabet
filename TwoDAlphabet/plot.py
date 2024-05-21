@@ -548,6 +548,8 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
     Returns:
         ROOT.TPad: Output pad.
     '''
+    ## Set x "error bars" to bin width to get proper fill with e2 errors
+    ROOT.gStyle.SetErrorX(0.5)
 
     def _draw_extralumi_tex():
         lumiE = ROOT.TLatex()
@@ -623,10 +625,10 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         totalBkg.SetMarkerStyle(0)
         totalBkg_err = totalBkg.Clone()
         totalBkg.SetLineColor(ROOT.kBlack)
-        totalBkg_err.SetLineColor(ROOT.kBlack)
+        totalBkg_err.SetLineColor(ROOT.kBlue)
         totalBkg_err.SetLineWidth(0)
-        totalBkg_err.SetFillColor(ROOT.kBlack)
-        totalBkg_err.SetFillStyle(3354)
+        totalBkg_err.SetFillColor(ROOT.kBlue)
+        totalBkg_err.SetFillStyle(3244)
     if preVsPost:
         # Determine whether we're plotting uncertainty on Prefit or Postfit distribution (plot_pre_vs_post() uses prefit unc)
         isPrefit = 1 if 'Prefit' in totalBkg.GetTitle() else 0
@@ -644,6 +646,7 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         # Plot either way
         for isig,sig in enumerate(sigs_to_plot):
             sig.SetLineWidth(2)
+            sig.SetLineColor(ROOT.kRed)
             legend.AddEntry(sig,sig.GetTitle().split(',')[0],'L')
 
         stack = ROOT.THStack(outname.split('/')[-1]+'_stack',outname.split('/')[-1]+'_stack')
@@ -682,6 +685,8 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         except: stack.GetYaxis().SetNdivisions(8,5,0)
         stack.Draw('hist same')
         for sig in signals:
+            sig.SetLineWidth(2)
+            sig.SetLineColor(ROOT.kRed)
             sig.Draw('hist same')
         
         # Draw total hist and error
