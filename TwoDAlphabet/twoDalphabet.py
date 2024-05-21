@@ -8,10 +8,8 @@ from TwoDAlphabet import plot
 import ROOT
 
 class TwoDAlphabet:
-    '''Class to injest and organize inputs.
+    '''Class to ingest and organize inputs.
     '''
-    # mkdirs + rebin + organize_hists
-    # track naming and fit info internally ("region information")
     def __init__(self, tag, inJSON='', findreplace={}, externalOpts={}, loadPrevious=False, verbose=False):
         '''Construct TwoDAlphabet object which takes as input an identification tag used to name
         the directory with stored results, JSON configuration files, find-replace pairs,
@@ -22,7 +20,7 @@ class TwoDAlphabet:
             jsons (str, optional): JSON configuration file path. Defaults to '' in which case
                 the tag is assumed to already exist and the existing runConfig.json is grabbed.
             findreplace (dict, optional):  Non-nested dictionary with key-value pairs to find-replace
-                in the internal class configuration dict. Defaults to {}.
+                in GLOBAL in the class configuration dict (see config.py). Defaults to {}.
             externalOpts (dict, optional): Option-value pairs. Defaults to {}.
         '''
         self.tag = tag
@@ -37,14 +35,15 @@ class TwoDAlphabet:
         optdict = config._section('OPTIONS')
         optdict.update(externalOpts)
         self.options = self.LoadOptions(optdict)
-        self.df = config.FullTable()
+        self.df = config.FullTable()  ## DataFrame with processes, regions, and systematics
         self.subtagTracker = {}
-        self.iterWorkspaceObjs = config.iterWorkspaceObjs
+        self.iterWorkspaceObjs = config.iterWorkspaceObjs  ## Key-value pairs in JSON where value is a list
         self._binningMap = {r:config._section('REGIONS')[r]['BINNING'] for r in config._section('REGIONS').keys()}
-        self.ledger = Ledger(self.df)
+        self.ledger = Ledger(self.df)  ## See class Ledger() below
 
         if not loadPrevious:
             self._setupProjDir(verbose)
+            ## "template_file" is just one of the input files, usually data
             if verbose: print('Opening input ROOT file %s' % self.df.iloc[0].source_filename)
             template_file = ROOT.TFile.Open(self.df.iloc[0].source_filename)
             if verbose: print('Looking for histogram %s' % self.df.iloc[0].source_histname)
@@ -524,7 +523,7 @@ class TwoDAlphabet:
                     ) for _ in range(njobs)
                 ]
 
-        if not makeEnv:
+        if condor and not makeEnv:
             print('\nWARNING: running toys on condor but not making CMSSW env tarball. If you want/need to make a tarball of your current CMSSW environment, run GoodnessOfFit() with makeEnv=True')
 
             condor = CondorRunner(
