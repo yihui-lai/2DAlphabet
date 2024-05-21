@@ -12,7 +12,7 @@ class TwoDAlphabet:
     '''
     # mkdirs + rebin + organize_hists
     # track naming and fit info internally ("region information")
-    def __init__(self, tag, inJSON='', findreplace={}, externalOpts={}, loadPrevious=False):
+    def __init__(self, tag, inJSON='', findreplace={}, externalOpts={}, loadPrevious=False, verbose=False):
         '''Construct TwoDAlphabet object which takes as input an identification tag used to name
         the directory with stored results, JSON configuration files, find-replace pairs,
         and optional external arguments.
@@ -31,6 +31,7 @@ class TwoDAlphabet:
             inJSON = glob.glob(self.tag+'/runConfig.json')
         if inJSON == '':
             raise RuntimeError('No JSONs were input and no existing ones could be found.')
+        if verbose: print('\nInside TwoDAlphabet __init__, configuring with %s' % inJSON)
 
         config = Config(inJSON, findreplace)
         optdict = config._section('OPTIONS')
@@ -43,8 +44,10 @@ class TwoDAlphabet:
         self.ledger = Ledger(self.df)
 
         if not loadPrevious:
-            self._setupProjDir()
+            self._setupProjDir(verbose)
+            if verbose: print('Opening input ROOT file %s' % self.df.iloc[0].source_filename)
             template_file = ROOT.TFile.Open(self.df.iloc[0].source_filename)
+            if verbose: print('Looking for histogram %s' % self.df.iloc[0].source_histname)
             template = template_file.Get(self.df.iloc[0].source_histname)
             template.SetDirectory(0)
 
@@ -52,20 +55,22 @@ class TwoDAlphabet:
             for kbinning in config._section('BINNING').keys():
                 self.binnings[kbinning] = Binning(kbinning, config._section('BINNING')[kbinning], template)
 
+            if verbose: print('About to create OrganizedHists()')
             self.organizedHists = OrganizedHists(
                 self.tag+'/', self.binnings,
-                self.GetHistMap(), readOnly=False
+                self.GetHistMap(verbose=verbose), readOnly=False
             )
+            if verbose: print('About to run _makeWorkspace()')
             self.workspace = self._makeWorkspace()
 
         else:
             self.binnings = pickle.load(open(self.tag+'/binnings.p','rb'))
             self.organizedHists = OrganizedHists(
                 self.tag+'/', self.binnings,
-                self.GetHistMap(), readOnly=True
+                self.GetHistMap(verbose=verbose), readOnly=True
             )
             # Does not contain the RooFit objects - just meta info
-            self.ledger = LoadLedger(self.tag+'/')
+            self.ledger = LoadLedger(self.tag+'/', verbose=verbose)
 
             self.workspace = None
             
@@ -74,12 +79,16 @@ class TwoDAlphabet:
 
         config.SaveOut(self.tag+'/')
 
-    def _setupProjDir(self):
+    def _setupProjDir(self, verbose=False):
         '''Create the directory structure where results will be stored.
         '''
-        if not os.path.isdir(self.tag+'/'):
+        if os.path.isdir(self.tag+'/'):
             if self.options.overwrite: 
+                print('Removing old dir %s' % self.tag)
                 execute_cmd('rm -rf '+self.tag)
+            elif verbose:
+                print('Keeping old dir %s' % self.tag)
+        if not os.path.isdir(self.tag+'/'):
             print ('Making dir '+self.tag+'/')
             os.mkdir(self.tag+'/')
 
@@ -190,29 +199,39 @@ class TwoDAlphabet:
             getattr(self.workspace,'import')(norm_cat,ROOT.RooFit.RecycleConflictNodes(),ROOT.RooFit.Silence())
 
 # --------------- GETTERS --------------- #
-    def InitQCDHists(self):
+    def InitQCDHists(self, verbose=False):
         '''Loop over all regions and for a given region's data histogram, subtract the list of background histograms,
         and return data-bkgList.
 
         Returns:
             dict(region,TH2): Dictionary with regions as keys and values as histograms of data-bkgList.
         '''
+        if verbose: print('\nInside InitQCDHists')
         out = {}
         for region,group in self.df.groupby('region'):
+            if verbose: print('  * region = %s, group:' % region)
+            print(group)
             data_hist = self.organizedHists.Get(process='data_obs',region=region,systematic='')
+            if verbose: print('  * data_hist integral = %s, nBinsX = %d, nBinsY = %d' % (data_hist.Integral(),
+                                                                                         data_hist.GetNbinsX(),
+                                                                                         data_hist.GetNbinsY()) )
             qcd = data_hist.Clone(data_hist.GetName().replace('data_obs','qcd'))
             qcd.SetDirectory(0)
+            if verbose: print('  * Cloned %s into %s' % (data_hist.GetName(), qcd.GetName()))
 
             bkg_sources = group.loc[group.process_type.eq('BKG') & group.variation.eq('nominal')]['process']
             for process_name in bkg_sources.to_list():
+                if verbose: print('    - Looking at background source %s' % process_name)
                 bkg_hist = self.organizedHists.Get(process=process_name,region=region,systematic='')
                 qcd.Add(bkg_hist,-1)
 
             out[region] = qcd
-            
+            if verbose: print('  * Final QCD integral = %d' % qcd.Integral())
+
+        if verbose: print('Done with InitQCDHists, returning.\n')
         return out
 
-    def GetHistMap(self, df=None):
+    def GetHistMap(self, df=None, verbose=False):
         '''Collect information on the histograms to extract, manipulate, and save
         into organized_hists.root and store it inside a `dict` where the key is the
         filename and the value is a DataFrame with columns `source_histname`, `out_histname`,
@@ -238,22 +257,52 @@ class TwoDAlphabet:
                 return row.process+'_'+row.region+'_FULL'
             else:
                 return row.process+'_'+row.region+'_FULL_'+row.variation+row.direction
-        
+
         if not isinstance(df,pandas.DataFrame):
             df = self.df
 
+        if verbose: print('\nInside twoDalphabet.py GetHistMap()')
         hists = {}
         for g, group_df in df.groupby(['source_filename']):
+            if verbose: print(g)
+            g_mod = g
+            if 'ggHtoaa' in g:
+                g_mod = (g.replace('ggHtoaa_mA_','SUSY_GluGluH_01J_HToAATo4B_M-')).replace('.root','_HPtAbv150.root')
+            elif 'ZHtoaa' in g:
+                g_mod = g.replace('ZHtoaa_mA_','ZH_H4b_Zmumu_SUSY_ZH_M-')
+            if g_mod != g:
+                print('Replaced signal file name with:')
+                print(g_mod)
             out_df = group_df.copy(True)
             out_df = out_df[out_df['variation'].eq('nominal') | out_df["syst_type"].eq("shapes")]
             out_df['out_histname'] = out_df.apply(_get_out_name, axis=1)
+            ## Weird (temporary!) error in Hichem's ZH file names
+            if 'ZHtoaa' in g or 'ZH_H4b' in g:
+                print('Changing out_histname from %s:' % out_df['out_histname'])
+            if 'ZHtoaa' in g:
+                if 'pass' in out_df.at[2,'out_histname']:
+                    out_df.at[2,'out_histname'] = out_df.at[2,'out_histname'].replace('pass', 'fail')
+                if 'fail' in out_df.at[5,'out_histname']:
+                    out_df.at[5,'out_histname'] = out_df.at[5,'out_histname'].replace('fail', 'pass')
+                print('Changed  out_histname to   %s:' % out_df['out_histname'])
+            if 'ZH_H4b' in g:
+                if 'pass' in out_df.at[0,'out_histname']:
+                    out_df.at[0,'out_histname'] = out_df.at[0,'out_histname'].replace('pass', 'fail')
+                if 'fail' in out_df.at[3,'out_histname']:
+                    out_df.at[3,'out_histname'] = out_df.at[3,'out_histname'].replace('fail', 'pass')
+            if 'ZHtoaa' in g or 'ZH_H4b' in g:
+                print('Changed  out_histname to   %s:' % out_df['out_histname'])
             out_df['binning'] = out_df.apply(lambda row: self._binningMap[row.region], axis=1)
-            hists[g] = out_df[['source_histname','out_histname','scale','color','binning']]
+            if verbose: print('  * source_histname = %s' % out_df['source_histname'])
+            if verbose: print('  * out_histname = %s' % out_df['out_histname'])
+            hists[g_mod] = out_df[['source_histname','out_histname','scale','color','binning']]
         return hists
 
-    def GetBinningFor(self, region):
+    def GetBinningFor(self, region, verbose=False):
         for r,b in self._binningMap.items():
+            if verbose: print('Inside GetBinningFor, checking r = %s' % r)
             if r == region:
+                if verbose: print('Found r matching region = %s!' % region)
                 return self.binnings[b], b
         
         raise RuntimeError('Cannot find region (%s) in config:\n\t%s'%(region,self._binningMap))
@@ -737,11 +786,16 @@ class Ledger():
 
         self._saveAlphas(outDir)
 
-def LoadLedger(indir=''):
+def LoadLedger(indir='', verbose=False):
+    if verbose: print('\nInside LoadLedger looking at %sledger.csv' % indir)
     df = pandas.read_csv(indir+'ledger_df.csv', index_col=0)
     ledger = Ledger(df)
     ledger.alphaObjs = pandas.read_csv(indir+'ledger_alphaObjs.csv', index_col=0)
     ledger.alphaParams = pandas.read_csv(indir+'ledger_alphaParams.csv', index_col=0)
+    if verbose: print('alphaObjs:')
+    if verbose: print(ledger.alphaObjs)
+    if verbose: print('alphaParams:')
+    if verbose: print(ledger.alphaParams)
 
     return ledger
 
