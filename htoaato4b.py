@@ -1,3 +1,10 @@
+## Based on example.py
+## Modified for boosted Higgs to aa to 4b search
+## 2D fit to mass of Higgs (AK8 jet) and mass of "a" boson (ParticleNet regression)
+## Mass-decorrelated Hto4b ParticleNet tagger used to define pass/fail regions
+## Both gluon fusion (ggH) and associated production modes used
+## - Andrew Brinkerhoff (abrinke1), May 2024, Baylor University
+
 from time import time
 from TwoDAlphabet import plot
 from TwoDAlphabet.twoDalphabet import MakeCard, TwoDAlphabet
@@ -8,29 +15,32 @@ import sys
 
 VERBOSE = True
 NTOY    = 25        ## Number of toys for goodness-of-fit (GoF) test
-SIGMD   = 'ZH'      ## ggH, ZH, ...
+SIGMD   = 'ggH'     ## Higgs production mode, e.g. ggH, ZH, ...
 MASSH   = 'mass'    ## Higgs mass regression (mass, msoft, pnet)
-MASSA   = '15'      ## Mass of "a" boson
+MASSA   = '30'      ## Mass of "a" boson
 ## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
 ## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
 # FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','2d1','1d2','2d2',
 #            'e0x0','e1x0','e0x1','e1x1','e1x2','e2x1','e2x2','e2d1','e1d2','e2d2']
 if SIGMD == 'ggH':
-    FIT     =  '2d2C'
+    FIT     =  '2d2C' ## Default for ggH: 2nd order poly in m(H) and m(a), uncorrelated
     FITLIST = ['2d2C']
-    NOMTF   = 0.011  ## Nominal fail-to-pass transfer factor
+    NOMTF   = 0.11    ## Nominal fail-to-pass transfer factor (11%)
 if SIGMD == 'ZH':
-    FIT     =  '0x0'
+    FIT     =  '0x0'  ## Default for ZH: flat transfer factor
     FITLIST = ['0x0']
-    NOMTF   = 0.0013  ## Nominal fail-to-pass transfer factor
+    NOMTF   = 0.0013  ## Nominal fail-to-pass transfer factor (0.13%)
 
 
 '''--------------------------Helper functions---------------------------'''
+## Use name of "pass" region to infer name of "fail" region
+## example.py includes a "loose" region as well, not need for this analysis
+## Need uniform convention for upper- or lower-case "p" and "f" - AWB 2024.05.21
 def _get_other_region_names(pass_reg_name):
     if 'pass' in pass_reg_name:
-        return pass_reg_name, pass_reg_name.replace('pass','loose'), pass_reg_name.replace('pass','fail')
+        return pass_reg_name, pass_reg_name.replace('pass','fail')
     elif 'Pass' in pass_reg_name:
-        return pass_reg_name, pass_reg_name.replace('Pass','Loose'), pass_reg_name.replace('Pass','Fail')
+        return pass_reg_name, pass_reg_name.replace('Pass','Fail')
 
 def _select_signal(row, args):
     '''Used by the Ledger.select() method to create a subset of a Ledger.
@@ -48,17 +58,16 @@ def _select_signal(row, args):
     in their name ("process"). Thus, the first element of `args` contains the string
     we want to find.
 
-    We also want to pick a TF to use so the second element of `args` contains a
-    string to specify the Background_args[1] process we want to use.
+    We also want to pick a transfer factor (TF) to use so the second element of `args`
+    contains a string to specify the Background_args[1] process we want to use.
 
     Args:
         row (pandas.Series): The row to evaluate.
         args (list): Arguments to pass in for the evaluation.
-
     Returns:
         Bool: True if keeping the row, False if dropping.
     '''
-    signame = args[0]
+    signame    = args[0]
     poly_order = args[1]
     if row.process_type == 'SIGNAL':
         if signame in row.process:
@@ -73,16 +82,16 @@ def _select_signal(row, args):
     else:
         return True
 
-def _load_CR_rpf(poly_order):  ## We only use SR, in fact
-    twoD_CRonly = TwoDAlphabet('%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA),
-                               '%stoaato4b.json' % SIGMD, loadPrevious=True,
-                               findreplace={'SIGNAME':['%stoaa_mA_%s' % (SIGMD, MASSA)]})
-    params_to_set = twoD_CRonly.GetParamsOnMatch('rpf.*'+poly_order, 'mH_%s_mA_%s_area' % (MASSH, MASSA), 'b')
+def _load_rpf(poly_order):
+    twoD_for_rpf = TwoDAlphabet('%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA),
+                                '%stoaato4b.json' % SIGMD, loadPrevious=True,
+                                findreplace={'SIGNAME':['%stoaa_mA_%s' % (SIGMD, MASSA)]})
+    params_to_set = twoD_for_rpf.GetParamsOnMatch('rpf.*'+poly_order, 'mH_%s_mA_%s_area' % (MASSH, MASSA), 'b')
     return {k:v['val'] for k,v in params_to_set.items()}
 
-def _load_CR_rpf_as_SR(poly_order):
+def _load_rpf_as_SR(poly_order):
     params_to_set = {}
-    for k,v in _load_CR_rpf(poly_order).items():
+    for k,v in _load_rpf(poly_order).items():
         params_to_set[k.replace('CR','SR')] = v
     return params_to_set
 
@@ -94,9 +103,9 @@ def _generate_constraints(fit_poly):
             break
     for i in range(nparams):
         if i == 0:
-            out[i] = {"MIN":-100.0, "MAX":100.0, "NOM":NOMTF, "ERROR":40.0}
+            out[i] = {"MIN":-100.0, "MAX":100.0, "NOM":NOMTF, "ERROR":NOMTF}
         else:
-            out[i] = {"MIN":-100.0, "MAX":100.0, "NOM":0.00, "ERROR":40.0},
+            out[i] = {"MIN":-100.0, "MAX":100.0, "NOM":0.00, "ERROR":1.0},
     return out
 
 def _generate_poly(fit_name, verb=False):
@@ -169,14 +178,10 @@ def _get_rpf_options():
 '''---------------Primary functions---------------------------'''
 def test_make(SRorCR):
     if VERBOSE: print('\nInside test_make(%s)' % SRorCR)
-    '''Constructs the workspace for either the CR or SR (a different function
-    could build them simultanesouly but in this example, we don't care to fit
-    the two simultanesouly so separate treatment is fine).
-
-    Args:
-        SRorCR (str): 'SR' or 'CR'.
+    '''Constructs the workspace for either the CR or SR.
+    Args: SRorCR (str): 'SR' or 'CR'.
     '''
-    assert SRorCR in ['SR', 'CR'] # quick sanity check
+    assert SRorCR in ['SR','CR']
 
     # Create the twoD object which starts by reading the JSON config and input arguments to
     # grab input simulation and data histograms, rebin them if needed, and save them all
@@ -184,21 +189,29 @@ def test_make(SRorCR):
     # is also saved as runConfig.json. This means, if you want to share your analysis with
     # someone, they can grab everything they need from this one spot - no need to have access to
     # the original files! (Note though that you'd have to change the config to point to organized_hists.root).
+
+    # TwoDAlphabet class defined in TwoDAlphabet/twoDalphabet.py
+    # First argument is the "tag", i.e. output directory name, in this case including the
+    # Higgs production mode (SIGMD), AK8 mass algo (MASSH), and signal "a" boson mass (MASSA)
+    # Second argument is JSON config file, third argument says we're starting from scratch
+    # findreplace adds lines to GLOBAL part of JSON (_addFindReplace in TwoDAlphabet/config.py)
+    # in this case a specific signal model (production mode and "a" boson mass)
     twoD = TwoDAlphabet('%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA),
                         '%stoaato4b.json' % SIGMD, loadPrevious=False, verbose=VERBOSE,
                         findreplace={'SIGNAME':['%stoaa_mA_%s' % (SIGMD, MASSA)]})
     if VERBOSE: print('Completed first TwoDAlphabet with loadPrevious=False')
-    qcd_hists = twoD.InitQCDHists(VERBOSE) # Create the data - BKGs histograms
+    # Initial "QCD" template simply equals data - all MC backgrounds
+    # Is this really what we want for the "pass" region as well? - AWB 2024.05.21
+    qcd_hists = twoD.InitQCDHists(VERBOSE)
 
-    # This loop will only run once since the only regions are CR_pass, CR_fail, CR_loose (or the SR versions)
-    # but it future proofs if we want to add more later for simultaneous fits.
-    for p, l, f in [_get_other_region_names(r) for r in twoD.ledger.GetRegions() if (('pass' in r) or ('Pass' in r))]:
-        if VERBOSE: print('p = %s, l = %s, f = %s' % (p, l, f))
-        # Gets the Binning object and some meta information (stored in `_`) that we don't care about
+    # This loop will only run once since the only regions are pass or fail
+    for ps, fl in [_get_other_region_names(r) for r in twoD.ledger.GetRegions() if (('pass' in r) or ('Pass' in r))]:
+        if VERBOSE: print('ps = %s, fl = %s' % (ps, fl))
+        # Gets the Binning object and meta information (`_unused`) that we don't care about.
         # The Binning object is needed for constructing the Alphabet objects.
-        # If one wanted to be very robust, they could get the binning for `p` and `l` as well and check the binning
-        # is consistent between the three.
-        binning_f, _unused = twoD.GetBinningFor(f, VERBOSE)
+        # If one wanted to be very robust, they could get the binning for `ps` and `fl`
+        # separately and check that the binning is consistent between the two.
+        binning_f, _unused = twoD.GetBinningFor(fl, VERBOSE)
         if VERBOSE: print(binning_f)
 
         # Next we construct the Alphabet objects which all inherit from the Generic2D class.
@@ -206,36 +219,30 @@ def test_make(SRorCR):
         # which represent each bin in the space.
 
         # First we make a BinnedDistribution which is a collection of RooRealVars built from a starting
-        # histogram (`qcd_hists[f]`). These can be set to be constants but, if not, they become free floating
-        # parameters in the fit. 
-        fail_name = 'Background_'+f
+        # histogram (`qcd_hists[fl]`). These can be set to be "constant" but, if not, they become free floating
+        # parameters in the fit. Bins <= 0 are forced to 1e-9 ("forcePositive" in TwoDAlphabet/alphawrap.py).
+        # If bin and at least 7 of 8 "neighbors" are 0, bin value is fixed to constant 0.
+        # Otherwise set to max(bin value, 5) with pre-fit uncertainty of 1e-6 to 1e6. Revisit? - AWB 2024.05.21
+        fail_name = 'Background_'+fl
         qcd_f = BinnedDistribution(
-                    fail_name, qcd_hists[f],
-                    binning_f, constant=False
+                    fail_name, qcd_hists[fl],
+                    binning_f, constant=False,
+                    forcePositive=True, verbose=VERBOSE
                 )
-
-        # # We'll then book a TF which will be used to transfer between loose and pass
-        # # We keep it out of the loop below though because this will keep the same form
-        # # while the fail-to-loose TF changes with the different possible options.
-        # qcd_rpfT = ParametricFunction(
-        #                 fail_name.replace('fail','rpfT'),
-        #                 binning_f, '0.1*(@0)',
-        #                 constraints={0:{"MIN":0, "MAX": 1}}
-        #             )
 
         # We add it to `twoD` so its included when making the RooWorkspace and ledger.
         # We specify the name of the process, the region it lives in, and the object itself.
         # The process is assumed to be a background and colored yellow but this can be changed
         # with optional arguments.
-        twoD.AddAlphaObj('Background', f, qcd_f)
+        twoD.AddAlphaObj('Background', fl, qcd_f)
 
-        # As a global variables, we've defined some different transfer function (TF) options.
+        # As global variables, we've defined some different transfer function (TF) options.
         # We only want to include one of these at the time of fitting but we want to construct
         # them all right now so we can pick and choose later.
         rpf_options = _get_rpf_options()
         for opt_name in rpf_options.keys():
-            # We have two regions determined by a TF, "pass" and "loose" with the "pass"
-            # being a simple flat scaling of the loose. The functional form and the 
+            # We have two regions determined by a TF, "pass" and "fail" with the "pass"
+            # being a parametric scaling of the "fail". The functional form and the
             # dictionary of constraints is defined in _rpf_options so we just plug
             # these in, being careful to name the objects uniquely (this affects
             # the naming of the RooFormulaVars created, which need to be unique).
@@ -247,35 +254,31 @@ def test_make(SRorCR):
             # the minimum, maximum, and error (initial step) of each parameter. It can
             # also be used to specify if the parameter should be unconstrainted (flatParam)
             # or Gaussian constrained (param <mu> <sigma>).
+            # By default bin values are forced to be >= 1e-9 for any parameter values (forcePositive)
+            # Does this lead to any non-linear behavior? How does it affect uncertainties? - AWB 2024.05.021
             if VERBOSE: print('  * For opt_name = %s, booking qcd_rpfL ParametricFunction' % opt_name)
             opt_fit = rpf_options[opt_name]
-            qcd_rpfL = ParametricFunction(
-                        (fail_name.replace('Fail','rpfL')).replace('fail','rpfL')+'_'+opt_name,
-                        binning_f, opt_fit['form'],
-                        constraints=opt_fit['constraints']
-                    )
+            qcd_rpf = ParametricFunction(
+                       (fail_name.replace('Fail','rpfL')).replace('fail','rpfL')+'_'+opt_name,
+                       binning_f, opt_fit['form'],
+                       constraints=opt_fit['constraints'], forcePositive=True
+                   )
             
-            # # Of course, what we actually need is these TFs multiplied by something else:
-            # #     qcd_l = qcd_f*rpfL
-            # #     qcd_p = qcd_l*rpfT
-            # # The Multiply method will make a new set of RooFormulaVars defined by multiplying the RooAbsArgs
-            # # of each object together. Other methods exist for adding and dividing (where Add() can take a optional factor
-            # # so that subtraction is possible).
-            # qcd_l = qcd_f.Multiply(fail_name.replace('fail','loose')+'_'+opt_name, qcd_rpfL)
-            # qcd_p = qcd_l.Multiply(fail_name.replace('fail','pass')+'_'+opt_name, qcd_rpfT)
-
-            # Just do one fail --> pass transfer
+            # Of course, what we actually need is these TFs multiplied by something else:
+            #     qcd_p = qcd_f*rpf
+            # The Multiply method will make a new set of RooFormulaVars defined by multiplying the RooAbsArgs
+            # of each object together. Other methods exist for adding and dividing, where Add() can take an
+            # optional factor so that subtraction is possible.  Need to settle on "Pass" vs. "pass". - AWB 2024.05.21
             if 'ggH' in SIGMD:
-                qcd_p = qcd_f.Multiply(fail_name.replace('Fail','Pass')+'_'+opt_name, qcd_rpfL)
+                qcd_p = qcd_f.Multiply(fail_name.replace('Fail','Pass')+'_'+opt_name, qcd_rpf)
             else:
-                qcd_p = qcd_f.Multiply(fail_name.replace('fail','pass')+'_'+opt_name, qcd_rpfL)
+                qcd_p = qcd_f.Multiply(fail_name.replace('fail','pass')+'_'+opt_name, qcd_rpf)
 
             # Now add the final models to the `twoD` object for tracking
             # Note that we have unique process names so they are identifiable
             # but we give them different titles so that they look pretty in
-            # the final plot legends.
-            # twoD.AddAlphaObj('Background_'+opt_name,l,qcd_l,title='Background')
-            twoD.AddAlphaObj('Background_'+opt_name,p,qcd_p,title='Background')
+            # the final plot legends. First two args are just strings (process and region).
+            twoD.AddAlphaObj('Background_'+opt_name, ps, qcd_p, title='Background')
 
     # Save() will save the RooWorkspace and the ledgers and other associated pieces
     # so the twoD object can be reconstructed later. If this line doesn't run or
@@ -349,7 +352,7 @@ def test_limit(SRorCR):
     '''
     poly_order = FIT
     # Returns a dictionary of the TF parameters with the names as keys and the post-fit values as dict values.
-    params_to_set = _load_CR_rpf_as_SR(poly_order) if SRorCR == 'SR' else _load_CR_rpf()
+    params_to_set = _load_rpf_as_SR(poly_order) if SRorCR == 'SR' else _load_rpf()
     working_area = '%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
 
@@ -430,7 +433,7 @@ def test_SigInj(SRorCR):
         areaname+'_area', injectAmount=0,
         ntoys=NTOY,
         blindData=True,
-        setParams=_load_CR_rpf_as_SR(poly_order),
+        setParams=_load_rpf_as_SR(poly_order),
         condor=False, njobs=1)
 
 def test_GoF_plot(SRorCR):
@@ -471,7 +474,7 @@ def test_Impacts(SRorCR):
         card='card.txt', 
         workspace=None, 
         ntoys=1, seed=123456, expectSignal=0,
-        setParams=_load_CR_rpf_as_SR(poly_order)
+        setParams=_load_rpf_as_SR(poly_order)
     )
     # Run the parameter impacts on the toy with the pre-fit workspace/card
     twoD.Impacts(
@@ -491,7 +494,7 @@ def test_generate_for_SR():
                         '%stoaato4b_fits_SR/runConfig.json' % SIGMD, loadPrevious=True)
 
     subset = twoD.ledger.select(_select_signal, 'mH_%s_mA_%s' % (MASSH, MASSA), FIT)
-    params_to_set = _load_CR_rpf_as_SR(FIT)
+    params_to_set = _load_rpf_as_SR(FIT)
 
     ###################################
     #-------- Version 1 --------------#
@@ -540,27 +543,23 @@ def test_generate_for_SR():
     twoD.StdPlots('mH_%s_mA_%s_toyArea2' % (MASSH, MASSA), ledger=subset)
 
 if __name__ == '__main__':
-    # Provided for convenience is this function which will package the current CMSSW and store it on the user's EOS (assumes FNAL).
-    # This only needs to be run once unless you fundamentally change your working environment.
+    # Provided for convenience is this function which will package
+    # the current CMSSW and store it on the user's EOS (assumes FNAL).
+    # Only needs to be run once unless you fundamentally change your working environment.
     # make_env_tarball()
-    
-    # test_make('CR')
-    test_make('SR')
-    
-    # test_fit('CR')
-    # test_plot('CR')
-    test_fit('SR')
-    test_plot('SR')
 
-    test_limit('SR')
+    # All functions can in principle be run with 'SR' (signal region)
+    # or 'CR' (control region).  Higgs to aa analysis currently has
+    # no CRs, but we may in the future. - AWB 2024.05.21
 
-    # # test_GoF('CR')
-    # test_GoF('SR')
-    # # test_SigInj('SR')
-
-    # test_Impacts('SR')
-    # test_generate_for_SR()
-
-    # # Run after condor jobs finish
-    # # test_GoF_plot('CR')
-    # # test_SigInj_plot('SR')
+    test_make('SR')         ## Generate histograms Generic2D objects, including transfer functions
+    test_fit('SR')          ## Perform fits to data with models
+    test_plot('SR')         ## Plot data vs. prediction, pre-fit and post-fit
+    test_limit('SR')        ## Compute expected asymptotic limits
+    # test_GoF('SR')          ## Perform goodness-of-fit (GoF) test with toys
+    # test_SigInj('SR')       ## Presumably performs some signal injection test (?)
+    # test_Impacts('SR')      ## Test impact of systematic uncertainties (?)
+    # test_generate_for_SR()  ## Absolutely no idea (???)
+    # ## If using condor, run after condor jobs finish
+    # test_GoF_plot('SR')     ## Plot results of GoF tests
+    # test_SigInj_plot('SR')  ## Plot results of signal injection tests
