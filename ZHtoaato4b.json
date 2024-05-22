@@ -1,13 +1,13 @@
 {
-  "NAME": "ZH_Hto4b_ZtoMuMu",
+  "NAME": "ZHToAATo4B",
   "PROCESSES": {
     "data_obs": {
       "SYSTEMATICS":[],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "comment": "for now, we are just using 2018 samples & bkg sim, so just use Data_18 - not Data_Run2",
-      "ALIAS": "data_2018",
+      "comment": "Would be better to name file 'Data_18', but currently named 'Run2_data'",
+      "ALIAS": "ZH_H4b_Zmumu_data_2018",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
@@ -16,50 +16,45 @@
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "SIGNAL",
-      "TITLE": "m_{X} = 125, m_{Y} = 55 (GeV)",
+      "TITLE": "H to aa to 4b, bm_{a} = XX (GeV)",
       "LOC":"path/FILE:HIST"
     }
   },
 
   "REGIONS": {
-    "CR_fail": {
+    "pass": {
       "PROCESSES": ["SIGNAME"],
       "BINNING": "default"
     },
-    "CR_loose": {
-      "PROCESSES": ["SIGNAME"],
-      "BINNING": "default"
-    },
-    "CR_pass": {
+    "fail": {
       "PROCESSES": ["SIGNAME"],
       "BINNING": "default"
     }
   },
 
   "GLOBAL": {
-    "FILE": "ZH_H4b_Zmumu_$process.root",
-    "HIST": "hMH_vs_MPnetA_$region",
-    "path": "/eos/user/h/hboucham/Haa4b/2D_Alphabet_root",
-    "SIGNAME": ["SUSY_ZH_M-55"]
+    "FILE": "$process.root",
+    "HIST": "hMH_vs_MPnetA_CR_$region",
+    "path": "/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_root"
   },
 
   "BINNING": {
     "default": {
       "X": {
-        "NAME": "MASS_H",
+        "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
-        "MIN": 0,
-        "MAX": 300,
-        "NBINS": 30,
+        "MIN": 60,
+        "MAX": 140,
+        "NBINS": 8,
         "SIGSTART": 100,
-        "SIGEND": 140
+        "SIGEND": 130
       },
       "Y": {
-        "NAME": "MASS_A",
-        "TITLE": "m_{A} (GeV)",
-        "MIN": 0,
-        "MAX": 70,
-        "NBINS": 35
+        "NAME": "mA",
+        "TITLE": "m_{a} (GeV)",
+        "MIN": 12,
+        "MAX": 60,
+        "NBINS": 8
       }
     }
   },
@@ -67,14 +62,17 @@
   "SYSTEMATICS": {
     "lumi": {
       "CODE": 0,
-      "VAL": 1.016
+      "VAL": 1.018
     }
   },
 
   "OPTIONS": {
+    "overwrite": true,
+    "blindedPlots": ["pass"],
+    "blindedFit": ["pass"],
     "plotPrefitSigInFitB": true,
-    "plotUncerts": false,
+    "plotUncerts": true,
     "plotTitles": false,
-    "year": 1
+    "year": 2018
   }
 }
