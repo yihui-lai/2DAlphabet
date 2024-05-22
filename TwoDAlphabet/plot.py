@@ -548,6 +548,8 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
     Returns:
         ROOT.TPad: Output pad.
     '''
+    ## Set x "error bars" to bin width to get proper fill with e2 errors
+    ROOT.gStyle.SetErrorX(0.5)
 
     def _draw_extralumi_tex():
         lumiE = ROOT.TLatex()
@@ -577,7 +579,7 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
     data.GetXaxis().SetTitleSize(0.09)
     data.GetXaxis().SetLabelOffset(0.05)
     data.GetYaxis().SetNdivisions(508)
-    data.SetMaximum(1.35*data.GetMaximum())
+    data.SetMaximum(1.35*max(data.GetMaximum(), totalBkg.GetMaximum()))
 
     if len(bkgs) == 0:
         data.SetTitle(title)
@@ -623,10 +625,10 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         totalBkg.SetMarkerStyle(0)
         totalBkg_err = totalBkg.Clone()
         totalBkg.SetLineColor(ROOT.kBlack)
-        totalBkg_err.SetLineColor(ROOT.kBlack)
+        totalBkg_err.SetLineColor(ROOT.kBlue)
         totalBkg_err.SetLineWidth(0)
-        totalBkg_err.SetFillColor(ROOT.kBlack)
-        totalBkg_err.SetFillStyle(3354)
+        totalBkg_err.SetFillColor(ROOT.kBlue)
+        totalBkg_err.SetFillStyle(3244)
     if preVsPost:
         # Determine whether we're plotting uncertainty on Prefit or Postfit distribution (plot_pre_vs_post() uses prefit unc)
         isPrefit = 1 if 'Prefit' in totalBkg.GetTitle() else 0
@@ -644,6 +646,7 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         # Plot either way
         for isig,sig in enumerate(sigs_to_plot):
             sig.SetLineWidth(2)
+            sig.SetLineColor(ROOT.kRed)
             legend.AddEntry(sig,sig.GetTitle().split(',')[0],'L')
 
         stack = ROOT.THStack(outname.split('/')[-1]+'_stack',outname.split('/')[-1]+'_stack')
@@ -651,7 +654,7 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         legend_info = []
         for bkg in bkgs:     # Won't loop if bkglist is empty
             if logyFlag:
-                bkg.SetMinimum(1e-3)
+                bkg.SetMinimum(1e-2)
             stack.Add(bkg)
             legend_info.append((bkg.GetTitle().split(',')[0], bkg))
 
@@ -666,20 +669,24 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         main_pad.cd()
         if logyFlag:
             main_pad.SetLogy()
-            data.SetMaximum(50*data.GetMaximum())
-            data.SetMinimum(1e-3)
-            totalBkg.SetMinimum(1e-3)
-            totalBkg_err.SetMinimum(1e-3)
-            stack.SetMinimum(1e-3)
-            for sig in signals: sig.SetMinimum(1e-3)
+            data.SetMaximum(50*max(data.GetMaximum(), totalBkg.GetMaximum()))
+            data.SetMinimum(1e-2)
+            totalBkg.SetMinimum(1e-2)
+            totalBkg_err.SetMinimum(1e-2)
+            stack.SetMinimum(1e-2)
+            for sig in signals: sig.SetMinimum(1e-2)
             
             # main_pad.RedrawAxis()
+        if len(signals) > 0:
+            data.SetMaximum(1.35*max(max(data.GetMaximum(), totalBkg.GetMaximum()),signals[0].GetMaximum()))
         data.Draw(datastyle)
         stack.Draw('hist same') # need to draw twice because the axis doesn't exist for modification until drawing
         try:    stack.GetYaxis().SetNdivisions(508)
         except: stack.GetYaxis().SetNdivisions(8,5,0)
         stack.Draw('hist same')
         for sig in signals:
+            sig.SetLineWidth(2)
+            sig.SetLineColor(ROOT.kRed)
             sig.Draw('hist same')
         
         # Draw total hist and error

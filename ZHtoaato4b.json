@@ -1,0 +1,78 @@
+{
+  "NAME": "ZHToAATo4B",
+  "PROCESSES": {
+    "data_obs": {
+      "SYSTEMATICS":[],
+      "SCALE": 1.0,
+      "COLOR": 1,
+      "TYPE": "DATA",
+      "comment": "Would be better to name file 'Data_18', but currently named 'Run2_data'",
+      "ALIAS": "ZH_H4b_Zmumu_data_2018",
+      "TITLE": "Data",
+      "LOC": "path/FILE:HIST"
+    },
+    "SIGNAME": {
+      "SYSTEMATICS":["lumi"],
+      "SCALE": 1.0,
+      "COLOR": 1,
+      "TYPE": "SIGNAL",
+      "TITLE": "H to aa to 4b, bm_{a} = XX (GeV)",
+      "LOC":"path/FILE:HIST"
+    }
+  },
+
+  "REGIONS": {
+    "pass": {
+      "PROCESSES": ["SIGNAME"],
+      "BINNING": "default"
+    },
+    "fail": {
+      "PROCESSES": ["SIGNAME"],
+      "BINNING": "default"
+    }
+  },
+
+  "GLOBAL": {
+    "FILE": "$process.root",
+    "HIST": "hMH_vs_MPnetA_CR_$region",
+    "path": "/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_root"
+  },
+
+  "BINNING": {
+    "default": {
+      "X": {
+        "NAME": "mH",
+        "TITLE": "m_{H} (GeV)",
+        "MIN": 60,
+        "MAX": 140,
+        "NBINS": 8,
+        "SIGSTART": 100,
+        "SIGEND": 130
+      },
+      "Y": {
+        "NAME": "mA",
+        "TITLE": "m_{a} (GeV)",
+        "MIN": 12,
+        "MAX": 60,
+        "NBINS": 8
+      }
+    }
+  },
+
+  "SYSTEMATICS": {
+    "lumi": {
+      "CODE": 0,
+      "VAL": 1.018
+    }
+  },
+
+  "OPTIONS": {
+    "overwrite": true,
+    "blindedPlots": ["pass"],
+    "blindedFit": ["pass"],
+    "plotPrefitSigInFitB": true,
+    "plotUncerts": true,
+    "plotTitles": false,
+    "year": 2018
+  }
+}

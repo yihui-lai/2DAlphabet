@@ -356,7 +356,7 @@ class ParametricFunction(Generic2D):
             raise RuntimeError('Could not find par%s in set of nuisances:\n\t%s'%(parIdx,[n['name'] for n in self.nuisances]))
        
 class BinnedDistribution(Generic2D):
-    def __init__(self,name,inhist,binning,constant=False,forcePositive=True):
+    def __init__(self,name,inhist,binning,constant=False,forcePositive=True,verbose=False):
         '''Represents a binned distribution as a group of RooRealVar parameters.
         If constant == False, each bin is considered an unconstrained parameter of the model.
 
@@ -375,10 +375,16 @@ class BinnedDistribution(Generic2D):
             for ybin in range(1,cat_hist.GetNbinsY()+1):
                 for xbin in range(1,cat_hist.GetNbinsX()+1):
                     bin_name = '%s_bin_%s-%s'%(cat_name,xbin,ybin)
-                    if constant or self._nSurroundingZeros(cat_hist,xbin,ybin) > 7:
+                    nzeros = self._nSurroundingZeros(cat_hist,xbin,ybin)
+                    if constant or nzeros > 7:
+                        if verbose:
+                            print('\nFound %d surrounding zeros for (%d, %d), fixing to 1e-9' % (nzeros, xbin, ybin))
                         self.binVars[bin_name] = RooConstVar(bin_name, bin_name, cat_hist.GetBinContent(xbin,ybin))
                     else:
-                        self.binVars[bin_name] = RooRealVar(bin_name, bin_name, max(5,cat_hist.GetBinContent(xbin,ybin)), 1e-6, 1e6)
+                        bin_val = cat_hist.GetBinContent(xbin,ybin)
+                        if verbose and bin_val < 5:
+                            print('\nBin (%d, %d) has only %d entries, resetting to 5' % (bin_val, xbin, ybin))
+                        self.binVars[bin_name] = RooRealVar(bin_name, bin_name, max(5,bin_val), 1e-6, 1e6)
                         self.nuisances.append({'name':bin_name, 'constraint':'flatParam', 'obj': self.binVars[bin_name]})
                     self._varStorage.append(self.binVars[bin_name]) # For safety if we add shape templates            
                      
