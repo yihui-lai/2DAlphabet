@@ -478,7 +478,7 @@ def _make_pad_gen(name):
     pad.cd(); pad.SetRightMargin(0.0); pad.SetTopMargin(0.0); pad.SetBottomMargin(0.0)
     return pad
 
-def make_pad_2D(outname, hist, style='lego', logzFlag=False, ROOTout=None,
+def make_pad_2D(outname, hist, style='colztext', logzFlag=False, ROOTout=None,
                 savePDF=False, savePNG=False, year=1, extraText='Preliminary'):
     '''Make a pad holding a 2D plot with standardized formatting conventions.
 

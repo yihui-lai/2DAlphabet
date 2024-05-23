@@ -57,7 +57,7 @@ class TwoDAlphabet:
             if verbose: print('About to create OrganizedHists()')
             self.organizedHists = OrganizedHists(
                 self.tag+'/', self.binnings,
-                self.GetHistMap(verbose=verbose), readOnly=False
+                self.GetHistMap(verbose=verbose), readOnly=False, trimSig=True
             )
             if verbose: print('About to run _makeWorkspace()')
             self.workspace = self._makeWorkspace()
@@ -209,7 +209,7 @@ class TwoDAlphabet:
         out = {}
         for region,group in self.df.groupby('region'):
             if verbose: print('  * region = %s, group:' % region)
-            print(group)
+            if verbose: print(group)
             data_hist = self.organizedHists.Get(process='data_obs',region=region,systematic='')
             if verbose: print('  * data_hist integral = %s, nBinsX = %d, nBinsY = %d' % (data_hist.Integral(),
                                                                                          data_hist.GetNbinsX(),
@@ -252,6 +252,7 @@ class TwoDAlphabet:
             Returns:
                 str: New name.
             '''
+            if verbose: print('_get_out_names: '+ row.process+'_'+row.region+'_FULL')
             if row.variation == 'nominal':
                 return row.process+'_'+row.region+'_FULL'
             else:
@@ -263,38 +264,15 @@ class TwoDAlphabet:
         if verbose: print('\nInside twoDalphabet.py GetHistMap()')
         hists = {}
         for g, group_df in df.groupby(['source_filename']):
+            if verbose: print('Starting a new iteration over g, group_df')
             if verbose: print(g)
-            g_mod = g
-            if 'ggHtoaa' in g:
-                g_mod = (g.replace('ggHtoaa_mA_','SUSY_GluGluH_01J_HToAATo4B_M-')).replace('.root','_HPtAbv150.root')
-            elif 'ZHtoaa' in g:
-                g_mod = g.replace('ZHtoaa_mA_','ZH_H4b_Zmumu_SUSY_ZH_M-')
-            if g_mod != g:
-                print('Replaced signal file name with:')
-                print(g_mod)
             out_df = group_df.copy(True)
             out_df = out_df[out_df['variation'].eq('nominal') | out_df["syst_type"].eq("shapes")]
             out_df['out_histname'] = out_df.apply(_get_out_name, axis=1)
-            ## Weird (temporary!) error in Hichem's ZH file names
-            if 'ZHtoaa' in g or 'ZH_H4b' in g:
-                print('Changing out_histname from %s:' % out_df['out_histname'])
-            if 'ZHtoaa' in g:
-                if 'pass' in out_df.at[2,'out_histname']:
-                    out_df.at[2,'out_histname'] = out_df.at[2,'out_histname'].replace('pass', 'fail')
-                if 'fail' in out_df.at[5,'out_histname']:
-                    out_df.at[5,'out_histname'] = out_df.at[5,'out_histname'].replace('fail', 'pass')
-                print('Changed  out_histname to   %s:' % out_df['out_histname'])
-            if 'ZH_H4b' in g:
-                if 'pass' in out_df.at[0,'out_histname']:
-                    out_df.at[0,'out_histname'] = out_df.at[0,'out_histname'].replace('pass', 'fail')
-                if 'fail' in out_df.at[3,'out_histname']:
-                    out_df.at[3,'out_histname'] = out_df.at[3,'out_histname'].replace('fail', 'pass')
-            if 'ZHtoaa' in g or 'ZH_H4b' in g:
-                print('Changed  out_histname to   %s:' % out_df['out_histname'])
             out_df['binning'] = out_df.apply(lambda row: self._binningMap[row.region], axis=1)
             if verbose: print('  * source_histname = %s' % out_df['source_histname'])
             if verbose: print('  * out_histname = %s' % out_df['out_histname'])
-            hists[g_mod] = out_df[['source_histname','out_histname','scale','color','binning']]
+            hists[g] = out_df[['source_histname','out_histname','scale','color','binning']]
         return hists
 
     def GetBinningFor(self, region, verbose=False):
