@@ -34,7 +34,7 @@
   "GLOBAL": {
     "FILE": "$process.root",
     "HIST": "$process_mass_WP80_$region_Nom",
-    "path": "2D_plots/Zll/WP80"
+    "path": "/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_root_052424/WP80"
   },
 
   "BINNING": {
