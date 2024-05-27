@@ -555,19 +555,20 @@ class TwoDAlphabet:
                     ) for _ in range(njobs)
                 ]
 
-        if not makeEnv:
-            print('\nWARNING: running toys on condor but not making CMSSW env tarball. If you want/need to make a tarball of your current CMSSW environment, run SignalInjection() with makeEnv=True')
+        if condor:
+            if not makeEnv:
+                print('\nWARNING: running toys on condor but not making CMSSW env tarball. If you want/need to make a tarball of your current CMSSW environment, run SignalInjection() with makeEnv=True')
 
-            condor = CondorRunner(
-                name = self.tag+'_'+subtag+'_sigInj_r'+rinj,
-                primaryCmds=fit_cmds,
-                toPkg=self.tag+'/',
-                runIn=run_dir,
-                toGrab='{run_dir}/fitDiagnostics_sigInj_r{rinj}*.root'.format(run_dir=run_dir,rinj=rinj),
-                eosRootfileTarball=eosRootfiles,
-                remakeEnv=False
-            )
-            condor.submit()
+                condor = CondorRunner(
+                    name = self.tag+'_'+subtag+'_sigInj_r'+rinj,
+                    primaryCmds=fit_cmds,
+                    toPkg=self.tag+'/',
+                    runIn=run_dir,
+                    toGrab='{run_dir}/fitDiagnostics_sigInj_r{rinj}*.root'.format(run_dir=run_dir,rinj=rinj),
+                    eosRootfileTarball=eosRootfiles,
+                    remakeEnv=False
+                )
+                condor.submit()
 
     def Limit(self, subtag, card_or_w='card.txt', blindData=True, verbosity=0,
                     setParams={}, condor=False, eosRootfiles=None, makeEnv=False):
@@ -593,7 +594,7 @@ class TwoDAlphabet:
                     )
                     condor.submit()
                 
-    def Impacts(self, subtag, rMin=-15, rMax=15, cardOrW='initialFitWorkspace.root --snapshotName initialFit', defMinStrat=0, extra=''):
+    def Impacts(self, subtag, rMin=-15, rMax=15, cardOrW='initialFitWorkspace.root --snapshotName initialFit', defMinStrat=0, blindData=True, extra=''):
         # param_str = '' if setParams == {} else '--setParameters '+','.join(['%s=%s'%(p,v) for p,v in setParams.items()])
         with cd(self.tag+'/'+subtag):
             subset = LoadLedger('')
@@ -608,8 +609,8 @@ class TwoDAlphabet:
                 '-M Impacts', '--rMin %s'%rMin,
                 '--rMax %s'%rMax, '-d %s'%card_or_w,
                 '--cminDefaultMinimizerStrategy {} -m 0'.format(defMinStrat),
-                impact_nuis_str, extra #param_str,
-                # '-t -1 --bypassFrequentistFit' if blindData else ''
+                impact_nuis_str, extra, #param_str,
+                '-t -1 --bypassFrequentistFit' if blindData else ''
             ]
             # Remove old runs if they exist
             execute_cmd('rm *_paramFit_*.root *_initialFit_*.root')
