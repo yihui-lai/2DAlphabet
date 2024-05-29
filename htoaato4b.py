@@ -15,13 +15,13 @@ import sys
 import math
 
 VERBOSE = True
-NTOY    = 25        ## Number of toys for goodness-of-fit (GoF) test
-CAT     = 'Zll'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
+NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
+CAT     = 'Wlv'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
 CATL    = CAT       ## Selection category with lepton "l" instead of mu "m" or ele "e"
 MASSH   = 'mass'    ## Higgs mass regression (mass, msoft, pnet)
 MASSESA = ['15','30','55']  ## Masses of "a" boson
 MASSA   = ('%sto%s' % (MASSESA[0], MASSESA[-1]) if len(MASSESA) > 1 else MASSESA[0])
-WP      = 'WP80'    ## Hto4b efficiency working point
+WP      = 'WP60'    ## Hto4b efficiency working point
 YEAR    = '2018'    ## Data year
 ## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
 ## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
@@ -43,6 +43,12 @@ if CAT == 'Zll' or CAT == 'Zmm' or CAT == 'Zee':
     FIT     =  '0x0'  ## Default for Z to ll: flat transfer factor
     FITLIST = ['0x0']
     NOMTF   = 0.18    ## Nominal fail-to-pass transfer factor (18%)
+if CAT == 'Wlv' or CAT == 'Wmv' or CAT == 'Wev':
+    CATL    = 'Wlv'
+    SIG     = 'WH'
+    FIT     =  '1x1C'  ## Default for Z to ll: flat transfer factor
+    FITLIST = ['1x1C']
+    NOMTF   = 0.12    ## Nominal fail-to-pass transfer factor (12%)
 
 
 '''--------------------------Helper functions---------------------------'''
@@ -124,6 +130,7 @@ def _generate_poly(fit_name, verb=False):
     elif '2x1' in fit_name: fit_poly = '@0*((1+@1*x+@4*x*x)*(1+@2*y)+@3*x*y+@5*x*x*y)'
     elif '1x2' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y+@4*y*y)+@3*x*y+@5*x*y*y)'
     elif '2x2' in fit_name: fit_poly = '@0*((1+@1*x+@4*x*x)*(1+@2*y+@5*y*y)+@3*x*y+@6*x*x*y+@7*x*y*y+@8*x*x*y*y)'
+    elif '1d1' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y))'
     elif '2d1' in fit_name: fit_poly = '@0*((1+@1*x+@3*x*x)*(1+@2*y))'
     elif '1d2' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y+@3*y*y))'
     elif '2d2' in fit_name: fit_poly = '@0*((1+@1*x+@3*x*x)*(1+@2*y+@4*y*y))'
