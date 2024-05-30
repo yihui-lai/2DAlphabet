@@ -684,10 +684,10 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         try:    stack.GetYaxis().SetNdivisions(508)
         except: stack.GetYaxis().SetNdivisions(8,5,0)
         stack.Draw('hist same')
-        colors = [ROOT.kRed, ROOT.kGreen+2, ROOT.kBlue, ROOT.kViolet]
+        colors = [ROOT.kRed, ROOT.kGreen+2, ROOT.kBlue, ROOT.kMagenta, ROOT.kTeal, ROOT.kViolet]
         for iSig in range(len(signals)):
             sig = signals[iSig]
-            color = colors[iSig % 4]
+            color = colors[iSig % 6]
             sig.SetLineWidth(2)
             sig.SetLineColor(color)
             sig.Draw('hist same')
