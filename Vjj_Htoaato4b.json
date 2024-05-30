@@ -1,12 +1,12 @@
 {
-  "NAME": "Zll_Htoaato4b",
+  "NAME": "Vjj_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
       "SYSTEMATICS":[],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "ALIAS": "Zll_Data_2018",
+      "ALIAS": "Vjj_Data_2018",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
@@ -40,18 +40,18 @@
       "X": {
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
-        "MIN": 70,
-        "MAX": 160,
-        "NBINS": 3,
+        "MIN": 60,
+        "MAX": 220,
+        "NBINS": 16,
         "SIGSTART": 100,
-        "SIGEND": 130
+        "SIGEND": 150
       },
       "Y": {
         "NAME": "mA",
         "TITLE": "m_{a} (GeV)",
-        "MIN": 12,
-        "MAX": 60,
-        "NBINS": 4
+        "MIN": 10,
+        "MAX": 62,
+        "NBINS": 13
       }
     }
   },

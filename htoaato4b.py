@@ -16,7 +16,7 @@ import math
 
 VERBOSE = True
 NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
-CAT     = 'Wlv'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
+CAT     = 'Vjj'     ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
 CATL    = CAT       ## Selection category with lepton "l" instead of mu "m" or ele "e"
 MASSH   = 'mass'    ## Higgs mass regression (mass, msoft, pnet)
 MASSESA = ['15','30','55']  ## Masses of "a" boson
@@ -27,31 +27,51 @@ YEAR    = '2018'    ## Data year
 ## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
 # FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','2d1','1d2','2d2',
 #            'e0x0','e1x0','e0x1','e1x1','e1x2','e2x1','e2x2','e2d1','e1d2','e2d2']
+SS_DIR = '/eos/cms/store/user/ssawant/htoaa/analysis/'
+HB_DIR = '/afs/cern.ch/user/h/hboucham/public/'
 if CAT == 'gg0l':
-    SIG     = 'ggH'
-    FIT     =  '2d2C' ## Default for gluon fusion (inclusive): 2nd order poly in m(H) and m(a)
+    PATH    = SS_DIR+'20240530_ggH0l_for2DAlphabet/2018/2DAlphabet_inputFiles'
+    SIGS    = ['ggH']
+    FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
     FITLIST = ['2d2C']
-    NOMTF   = 0.11    ## Nominal fail-to-pass transfer factor (11%)
+    NOMTF   = (0.1 if WP == 'WP40' else 0.6)
+if CAT == 'Vjj':
+    PATH    = SS_DIR+'20240530_VHHadronicMode_for2DAlphabet_1/2018/2DAlphabet_inputFiles'
+    SIGS    = ['WH','ZH']
+    FIT     =  '1d1C'
+    FITLIST = ['1d1C']
+    NOMTF   = (0.1 if WP == 'WP40' else 0.5)
+if CAT == 'Wlv' or CAT == 'Wmv' or CAT == 'Wev':
+    PATH    = HB_DIR+'2D_Wlv_052824/%s' % WP
+    CATL    = 'Wlv'
+    SIGS    = ['WH']
+    FIT     =  '1x1C'  ## Default for Z to ll: flat transfer factor
+    FITLIST = ['1x1C']
+    NOMTF   = 0.12    ## Nominal fail-to-pass transfer factor (12%)
 if CAT == 'Zvv':
-    SIG     = 'ZH'
+    PATH    = SS_DIR+'20240529_ZH_4b2nu_for2DAlphabet/2018/2DAlphabet_inputFiles'
+    SIGS    = ['ZH']
     FIT     =  '0x0'  ## Default for Z to vv (MET): flat transfer factor
     FITLIST = ['0x0']
     NOMTF   = 0.36    ## Nominal fail-to-pass transfer factor (36%)
 if CAT == 'Zll' or CAT == 'Zmm' or CAT == 'Zee':
+    PATH    = HB_DIR+'2D_Alphabet_root_052424/%s' % WP
     CATL    = 'Zll'
-    SIG     = 'ZH'
+    SIGS    = ['ZH']
     FIT     =  '0x0'  ## Default for Z to ll: flat transfer factor
     FITLIST = ['0x0']
     NOMTF   = 0.18    ## Nominal fail-to-pass transfer factor (18%)
-if CAT == 'Wlv' or CAT == 'Wmv' or CAT == 'Wev':
-    CATL    = 'Wlv'
-    SIG     = 'WH'
-    FIT     =  '1x1C'  ## Default for Z to ll: flat transfer factor
-    FITLIST = ['1x1C']
-    NOMTF   = 0.12    ## Nominal fail-to-pass transfer factor (12%)
 
 
 '''--------------------------Helper functions---------------------------'''
+def _sig_names():
+    '''Set up list of signal names for multiple Higgs production modes, mass(a) values'''
+    signames = []
+    for sig in SIGS:
+        for massA in MASSESA:
+            signames.append('%s_%stoaato4b_mA_%s_%s' % (CAT, sig, massA, YEAR))
+    return signames
+
 def _select_signal(row, args):
     '''Used by the Ledger.select() method to create a subset of a Ledger.
     This function provides the logic to determine which entries/rows of the Ledger
@@ -97,7 +117,8 @@ def _select_signal(row, args):
 def _load_rpf(poly_order):
     twoD_for_rpf = TwoDAlphabet('fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR),
                                 '%s_Htoaato4b.json' % CATL, loadPrevious=True,
-                                findreplace={'SIGNAME':['%s_%stoaato4b_mA_%s_%s' % (CAT, SIG, massA, YEAR) for massA in MASSESA]})
+                                findreplace={'path':PATH, 'SIGNAME':_sig_names(),
+                                             'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
     params_to_set = twoD_for_rpf.GetParamsOnMatch('rpf.*'+poly_order, 'mA_all_area', 'b')
     return {k:v['val'] for k,v in params_to_set.items()}
 
@@ -140,7 +161,7 @@ def _generate_poly(fit_name, verb=False):
         sys.exit()
     if verb: print('\nUsing fit function %s: %s' % (fit_name, fit_poly))
     ## Variable replacements: "C" = central, "M" = mass ratio
-    ## "M" gives m(a)/m(H) for m(a) = [10,64], m(H) = [70,200] (60-200 for msoft)
+    ## "M" gives m(a)/m(H) for m(a) = [10,62], m(H) = [60,220]
     fit_len = len(fit_name)
     if fit_name.startswith('e'): fit_len -= 1
     if fit_len > 3:
@@ -151,22 +172,14 @@ def _generate_poly(fit_name, verb=False):
                 if verb: print('  * Replacing "y" with "y-0.5" in fit function')
                 fit_poly = fit_poly.replace('y','(y-0.5)')
             elif fit_name[3] == 'M' or (fit_name.startswith('e') and fit_name[4] == 'M'):
-                if MASSH == 'msoft':
-                    if verb: print('  * Replacing "y" with "((y-(17/54))/(x+(60/140)))" in fit function')
-                    fit_poly = fit_poly.replace('y','((y-(17/54))/(x+(60/140)))')
-                else:
-                    if verb: print('  * Replacing "y" with "((y-(17/54))/(x+(70/130)))" in fit function')
-                    fit_poly = fit_poly.replace('y','((y-(17/54))/(x+(70/130)))')
+                if verb: print('  * Replacing "y" with "((y+(10/52)-0.5)/(x+(60/160)))" in fit function')
+                fit_poly = fit_poly.replace('y','((y+(10/52)-0.5)/(x+(60/160)))')
             else:
                 print('\n\n*** ERROR! Invalid fit function %s! Quitting. ***' % fit_name)
                 sys.exit()
         elif fit_len == 4 and fit_name.endswith('M'):
-            if MASSH == 'msoft':
-                if verb: print('  * Replacing "y" with "((y+(10/54))/(x+(60/140)))" in fit function')
-                fit_poly = fit_poly.replace('y','((y+(10/54))/(x+(60/140)))')
-            else:
-                if verb: print('  * Replacing "y" with "((y+(10/54))/(x+(70/130)))" in fit function')
-                fit_poly = fit_poly.replace('y','((y+(10/54))/(x+(70/130)))')
+            if verb: print('  * Replacing "y" with "((y+(10/52))/(x+(60/160)))" in fit function')
+            fit_poly = fit_poly.replace('y','((y+(10/52))/(x+(60/160)))')
         else:
             if verb: print('\n\n*** ERROR! Invalid fit function %s! Quitting. ***' % fit_name)
             sys.exit()
@@ -212,7 +225,8 @@ def test_make(SRorCR):
     # 'SIGNAME' also gets used as the $process in _batch_replace
     twoD = TwoDAlphabet('fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR),
                         '%s_Htoaato4b.json' % CATL, loadPrevious=False, verbose=VERBOSE,
-                        findreplace={'SIGNAME':['%s_%stoaato4b_mA_%s_%s' % (CAT, SIG, massA, YEAR) for massA in MASSESA]})
+                        findreplace={'path':PATH, 'SIGNAME':_sig_names(),
+                                     'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
     if VERBOSE: print('Completed first TwoDAlphabet with loadPrevious=False')
     # Initial "QCD" template simply equals data - all MC backgrounds
     # Is this really what we want for the "Pass" region as well? - AWB 2024.05.21
@@ -325,8 +339,8 @@ def test_fit(SRorCR):
     # to select(). See _select_signal for how to construct the function.
     # Construct subsets for all mA values together and for middle mA.
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
-    subsetAll = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_' % (CAT, SIG), FIT)
-    subsetMid = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIG, midMA, YEAR), FIT)
+    subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', FIT)
+    subsetMid = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR), FIT)
 
     # Make card reads the ledger and creates a Combine card from it.
     # The second argument specifices the sub-directory to save the card in.
@@ -356,11 +370,11 @@ def test_plot(SRorCR):
     working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
-    subsetMid = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIG, midMA, YEAR), FIT)
+    subsetMid = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR), FIT)
     twoD.StdPlots('mA_%s_area' % midMA, subsetMid)
-    # ## For some reason PostFit2DShapesFromWorkspace segfaults in mA_all_area - AWB 2024.05.25
-    # subsetAll = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_' % (CAT, SIG), FIT)
-    # twoD.StdPlots('mA_all_area', subsetAll)
+    ## For some reason PostFit2DShapesFromWorkspace segfaults in mA_all_area - AWB 2024.05.25
+    subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', FIT)
+    twoD.StdPlots('mA_all_area', subsetAll)
 
 def test_limit(SRorCR):
     '''Perform a blinded limit. To be blinded, the Combine algorithm (via option `--run blind`)
@@ -378,16 +392,12 @@ def test_limit(SRorCR):
     # can loop over the list values without worrying if the config has changed over time
     # (necessitating remembering that it changed and having to hard-code the list here).
     if VERBOSE: print ('Possible signals: %s' % twoD.iterWorkspaceObjs['SIGNAME'])
-    for signame in twoD.iterWorkspaceObjs['SIGNAME']:
-        areaname = None
-        for massA in MASSESA:
-            if ('mA_%s' % massA) in signame:
-                areaname = 'mA_%s_area' % massA
-                break
-        if not 'mA_' in areaname:
-            print('\n\nsigname = %s, mA not in MASSESA. Quitting.\n' % signame)
-            sys.exit()
 
+    ## for signame in twoD.iterWorkspaceObjs['SIGNAME']:
+    areaname = None
+    for massA in MASSESA:
+        signame = 'Htoaato4b_mA_%s_%s' % (massA, YEAR)
+        areaname = 'mA_%s_area' % massA
         print ('Performing limit for %s in %s' % (signame, areaname))
 
         # Make a subset and card as in test_fit()
@@ -415,7 +425,7 @@ def test_GoF(SRorCR):
     # If the card doesn't exist, make it (in the case that test_fit() wasn't run first).
     # Only need to run with one signal model, since we fix signal strength to 0 anyway.
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
-    signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIG, midMA, YEAR)
+    signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR)
     areaname = 'mA_%s_area' % midMA
     if not os.path.exists(twoD.tag+'/'+areaname+'/card.txt'):
         subset = twoD.ledger.select(_select_signal, signame, FIT)
@@ -438,7 +448,7 @@ def test_SigInj(SRorCR, massA):
     '''Perform a signal injection test'''
     assert SRorCR in ['SR','CR']
 
-    signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIG, massA, YEAR)
+    signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR)
     areaname = 'mA_%s_area' % massA
     working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
@@ -484,7 +494,7 @@ def test_Impacts(SRorCR, massA):
 
     # We need to run impacts in the SR for them to make sense but we can't use the data in the SR while blinded.
     # So we need a toy to play with instead.
-    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIG, massA, YEAR), FIT)
+    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR), FIT)
     # Make a new area to play in
     twoD.MakeCard(subset, 'mA_%s_impactArea' % massA)
 
@@ -513,7 +523,7 @@ def test_generate_for_SR(massA):
     working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
 
-    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIG, massA, YEAR), FIT)
+    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR), FIT)
     params_to_set = _load_rpf_as_SR(FIT)
 
     ###################################

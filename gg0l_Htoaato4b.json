@@ -32,9 +32,7 @@
   },
 
   "GLOBAL": {
-    "FILE": "$process.root",
-    "HIST": "$process_mass_WP40_$region_Nom",
-    "path": "2D_plots/gg0l"
+    "FILE": "$process.root"
   },
 
   "BINNING": {
@@ -42,10 +40,10 @@
       "X": {
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
-        "MIN": 70,
-        "MAX": 200,
-        "NBINS": 13,
-        "SIGSTART": 110,
+        "MIN": 60,
+        "MAX": 220,
+        "NBINS": 16,
+        "SIGSTART": 100,
         "SIGEND": 150
       },
       "Y": {

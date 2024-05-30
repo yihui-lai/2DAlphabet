@@ -1,13 +1,12 @@
 {
-  "NAME": "ZvvHToAATo4B",
+  "NAME": "Zvv_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
       "SYSTEMATICS":[],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "comment": "Would be better to name file 'Data_18', but currently named 'Run2_data'",
-      "ALIAS": "Run2_data",
+      "ALIAS": "Zvv_Data_2018",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
@@ -33,9 +32,7 @@
   },
 
   "GLOBAL": {
-    "FILE": "$process.root",
-    "HIST": "hLeadingFatJetMass_vs_massA_Hto4b_avg_$region",
-    "path": "/eos/cms/store/user/ssawant/htoaa/analysis/20240519_ZH_4b2nu_HEMIssueFix/2018/2DAlphabet_inputFiles"
+    "FILE": "$process.root"
   },
 
   "BINNING": {
@@ -44,8 +41,8 @@
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
         "MIN": 60,
-        "MAX": 160,
-        "NBINS": 5,
+        "MAX": 180,
+        "NBINS": 3,
         "SIGSTART": 100,
         "SIGEND": 140
       },

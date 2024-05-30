@@ -32,9 +32,7 @@
   },
 
   "GLOBAL": {
-    "FILE": "$process.root",
-    "HIST": "$process_mass_WP60_$region_Nom",
-    "path": "/afs/cern.ch/user/h/hboucham/public/2D_Wlv_052824/WP60"
+    "FILE": "$process.root"
   },
 
   "BINNING": {
