@@ -16,44 +16,62 @@ import math
 
 VERBOSE = True
 NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
-CAT     = 'Vjj'     ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
+CAT     = 'gg0lHi'  ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
 CATL    = CAT       ## Selection category with lepton "l" instead of mu "m" or ele "e"
 MASSH   = 'mass'    ## Higgs mass regression (mass, msoft, pnet)
 MASSESA = ['15','30','55']  ## Masses of "a" boson
 MASSA   = ('%sto%s' % (MASSESA[0], MASSESA[-1]) if len(MASSESA) > 1 else MASSESA[0])
-WP      = 'WP60'    ## Hto4b efficiency working point
+WP      = 'WP40'    ## Hto4b efficiency working point
 YEAR    = '2018'    ## Data year
 ## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
 ## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
-# FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','2d1','1d2','2d2',
+# FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','1d1','2d1','1d2','2d2',
 #            'e0x0','e1x0','e0x1','e1x1','e1x2','e2x1','e2x2','e2d1','e1d2','e2d2']
 SS_DIR = '/eos/cms/store/user/ssawant/htoaa/analysis/'
 HB_DIR = '/afs/cern.ch/user/h/hboucham/public/'
-if CAT == 'gg0l':
-    PATH    = SS_DIR+'20240530_ggH0l_for2DAlphabet/2018/2DAlphabet_inputFiles'
+MD_DIR = '/afs/cern.ch/user/m/moanwar/public/'
+AB_DIR = '/afs/cern.ch/work/a/abrinke1/public/HiggsToAA/coffea/eventloop/plots/'
+
+if CAT == 'gg0l' or CAT == 'gg0lIncl' or CAT == 'gg0lHi' or CAT == 'gg0lLo':
+    # PATH    = SS_DIR+'20240530_ggH0l_for2DAlphabet/2018/2DAlphabet_inputFiles'
+    PATH    = SS_DIR+'20240627_gg0l_1/2018/2DAlphabet_inputFiles/'+CAT
     SIGS    = ['ggH']
     FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
     FITLIST = ['2d2C']
-    NOMTF   = (0.1 if WP == 'WP40' else 0.6)
+    NOMTF   = 0.1
+if CAT == 'VBFjj':
+    PATH    = MD_DIR+'forAndrew/2DAlphabetfiles'
+    SIGS    = ['VBFH']
+    FIT     =  '2d2C'
+    FITLIST = ['2d2C']
+    NOMTF   = 0.10    ## Nominal fail-to-pass transfer factor (10%)
 if CAT == 'Vjj':
-    PATH    = SS_DIR+'20240530_VHHadronicMode_for2DAlphabet_1/2018/2DAlphabet_inputFiles'
+    # PATH    = SS_DIR+'20240530_VHHadronicMode_for2DAlphabet_1/2018/2DAlphabet_inputFiles'
+    PATH    = SS_DIR+'20240626_Vjj/2018/2DAlphabet_inputFiles/Vjj'
     SIGS    = ['WH','ZH']
     FIT     =  '1d1C'
     FITLIST = ['1d1C']
-    NOMTF   = (0.1 if WP == 'WP40' else 0.5)
+    NOMTF   = (0.15 if WP == 'WP40' else 0.22)
 if CAT == 'Wlv' or CAT == 'Wmv' or CAT == 'Wev':
     PATH    = HB_DIR+'2D_Wlv_052824/%s' % WP
     CATL    = 'Wlv'
     SIGS    = ['WH']
-    FIT     =  '1x1C'  ## Default for Z to ll: flat transfer factor
+    FIT     =  '1x1C'
     FITLIST = ['1x1C']
     NOMTF   = 0.12    ## Nominal fail-to-pass transfer factor (12%)
-if CAT == 'Zvv':
-    PATH    = SS_DIR+'20240529_ZH_4b2nu_for2DAlphabet/2018/2DAlphabet_inputFiles'
+if CAT == 'WlvLo' or CAT == 'ttblv':
+    PATH    = HB_DIR+'2D_062324/%s' % WP
+    SIGS    = ['WH'] if CAT.startswith('Wlv') else ['ttH']
+    FIT     =  '1x1C'
+    FITLIST = ['1x1C']
+    NOMTF   = 0.10    ## Nominal fail-to-pass transfer factor (8-12%)
+if CAT == 'Zvv' or CAT == 'ZvvHi' or CAT == 'ZvvLo':
+    # PATH    = SS_DIR+'20240529_ZH_4b2nu_for2DAlphabet/2018/2DAlphabet_inputFiles'
+    PATH    = SS_DIR+'20240626_Zvv_METDataset_2/2018/2DAlphabet_inputFiles/'+CAT
     SIGS    = ['ZH']
-    FIT     =  '0x0'  ## Default for Z to vv (MET): flat transfer factor
-    FITLIST = ['0x0']
-    NOMTF   = 0.36    ## Nominal fail-to-pass transfer factor (36%)
+    FIT     =  '1d1C'
+    FITLIST = ['1d1C']
+    NOMTF   = 0.17
 if CAT == 'Zll' or CAT == 'Zmm' or CAT == 'Zee':
     PATH    = HB_DIR+'2D_Alphabet_root_052424/%s' % WP
     CATL    = 'Zll'
@@ -61,6 +79,18 @@ if CAT == 'Zll' or CAT == 'Zmm' or CAT == 'Zee':
     FIT     =  '0x0'  ## Default for Z to ll: flat transfer factor
     FITLIST = ['0x0']
     NOMTF   = 0.18    ## Nominal fail-to-pass transfer factor (18%)
+if CAT == 'LepHi' or CAT == 'XXHi':  ## WlvHi + ttbblv + Zll (+ ZvvHi)
+    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT
+    SIGS    = ['WH','ttH','ZH']
+    FIT     =  '1d1C'
+    FITLIST = ['1d1C']
+    NOMTF   = 0.11
+if CAT == 'XXLo':  ## WlvLo + ttblv + ZvvLo
+    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT
+    SIGS    = ['WH','ttH','ZH']
+    FIT     =  '1x1C'
+    FITLIST = ['1x1C']
+    NOMTF   = 0.11
 
 
 '''--------------------------Helper functions---------------------------'''
