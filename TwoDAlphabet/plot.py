@@ -478,7 +478,7 @@ def _make_pad_gen(name):
     pad.cd(); pad.SetRightMargin(0.0); pad.SetTopMargin(0.0); pad.SetBottomMargin(0.0)
     return pad
 
-def make_pad_2D(outname, hist, style='colztext', logzFlag=False, ROOTout=None,
+def make_pad_2D(outname, hist, style='colz', logzFlag=False, ROOTout=None,
                 savePDF=False, savePNG=False, year=1, extraText='Preliminary'):
     '''Make a pad holding a 2D plot with standardized formatting conventions.
 
@@ -678,7 +678,10 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
             
             # main_pad.RedrawAxis()
         if len(signals) > 0:
-            data.SetMaximum(1.35*max(max(data.GetMaximum(), totalBkg.GetMaximum()),signals[0].GetMaximum()))
+            maxSigBin = 0
+            for ii in range(len(signals)):
+                maxSigBin = max(maxSigBin, signals[ii].GetMaximum())
+            data.SetMaximum(1.35*max(max(data.GetMaximum(), totalBkg.GetMaximum()),maxSigBin))
         data.Draw(datastyle)
         stack.Draw('hist same') # need to draw twice because the axis doesn't exist for modification until drawing
         try:    stack.GetYaxis().SetNdivisions(508)
@@ -977,7 +980,7 @@ def plot_correlation_matrix(varsToIgnore, threshold=0, corrText=False):
 
             corrMtrx.GetXaxis().SetLabelSize(0.01)
             corrMtrx.GetYaxis().SetLabelSize(0.01)
-            corrMtrx.Draw('colz text' if corrText else 'colz')
+            corrMtrx.Draw('colztext' if corrText else 'colz')
             corrMtrxCan.Print('plots_fit_%s/correlation_matrix.png'%fittag,'png')
             corrMtrxCan.Print('plots_fit_%s/correlation_matrix.pdf'%fittag,'pdf')
 
