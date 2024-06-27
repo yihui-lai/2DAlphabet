@@ -1,12 +1,12 @@
 {
-  "NAME": "Zvv_Htoaato4b",
+  "NAME": "XXHi_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
       "SYSTEMATICS":[],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "ALIAS": "Zvv_Data_2018",
+      "ALIAS": "XXHi_Data_2018",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
