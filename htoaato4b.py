@@ -16,12 +16,12 @@ import math
 
 VERBOSE = True
 NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
-CAT     = 'gg0lHi'  ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
+CAT     = 'XXHi'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
 CATL    = CAT       ## Selection category with lepton "l" instead of mu "m" or ele "e"
 MASSH   = 'mass'    ## Higgs mass regression (mass, msoft, pnet)
 MASSESA = ['15','30','55']  ## Masses of "a" boson
 MASSA   = ('%sto%s' % (MASSESA[0], MASSESA[-1]) if len(MASSESA) > 1 else MASSESA[0])
-WP      = 'WP40'    ## Hto4b efficiency working point
+WP      = 'WP60'    ## Hto4b efficiency working point
 YEAR    = '2018'    ## Data year
 ## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
 ## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
@@ -79,14 +79,14 @@ if CAT == 'Zll' or CAT == 'Zmm' or CAT == 'Zee':
     FIT     =  '0x0'  ## Default for Z to ll: flat transfer factor
     FITLIST = ['0x0']
     NOMTF   = 0.18    ## Nominal fail-to-pass transfer factor (18%)
-if CAT == 'LepHi' or CAT == 'XXHi':  ## WlvHi + ttbblv + Zll (+ ZvvHi)
-    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT
+if CAT == 'LepHi' or CAT == 'XXHi':  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
+    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT+'/2024_07_09'
     SIGS    = ['WH','ttH','ZH']
     FIT     =  '1d1C'
     FITLIST = ['1d1C']
     NOMTF   = 0.11
 if CAT == 'XXLo':  ## WlvLo + ttblv + ZvvLo
-    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT
+    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT+'/2024_07_09'
     SIGS    = ['WH','ttH','ZH']
     FIT     =  '1x1C'
     FITLIST = ['1x1C']
