@@ -2,6 +2,7 @@
 ```
 cmsrel CMSSW_11_3_4
 cd CMSSW_11_3_4/src
+cmssw-cc7  ## Emulate SLC7 environment; required before any cmsenv
 cmsenv
 git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
 cd HiggsAnalysis/CombinedLimit
