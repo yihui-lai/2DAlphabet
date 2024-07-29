@@ -1,13 +1,12 @@
 {
-  "NAME": "ZHToAATo4B",
+  "NAME": "gg0lIncl_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
       "SYSTEMATICS":[],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "comment": "Would be better to name file 'Data_18', but currently named 'Run2_data'",
-      "ALIAS": "ZH_H4b_Zmumu_data_2018",
+      "ALIAS": "gg0lIncl_Data_2018",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
@@ -22,20 +21,18 @@
   },
 
   "REGIONS": {
-    "pass": {
+    "Pass": {
       "PROCESSES": ["SIGNAME"],
       "BINNING": "default"
     },
-    "fail": {
+    "Fail": {
       "PROCESSES": ["SIGNAME"],
       "BINNING": "default"
     }
   },
 
   "GLOBAL": {
-    "FILE": "$process.root",
-    "HIST": "hMH_vs_MPnetA_CR_$region",
-    "path": "/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_root"
+    "FILE": "$process.root"
   },
 
   "BINNING": {
@@ -44,17 +41,17 @@
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
         "MIN": 60,
-        "MAX": 140,
-        "NBINS": 8,
+        "MAX": 220,
+        "NBINS": 16,
         "SIGSTART": 100,
-        "SIGEND": 130
+        "SIGEND": 150
       },
       "Y": {
         "NAME": "mA",
         "TITLE": "m_{a} (GeV)",
-        "MIN": 12,
-        "MAX": 60,
-        "NBINS": 8
+        "MIN": 10,
+        "MAX": 62,
+        "NBINS": 13
       }
     }
   },
@@ -68,8 +65,8 @@
 
   "OPTIONS": {
     "overwrite": true,
-    "blindedPlots": ["pass"],
-    "blindedFit": ["pass"],
+    "blindedPlots": ["Pass"],
+    "blindedFit": ["Pass"],
     "plotPrefitSigInFitB": true,
     "plotUncerts": true,
     "plotTitles": false,

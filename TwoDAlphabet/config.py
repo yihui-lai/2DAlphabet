@@ -362,7 +362,7 @@ class OrganizedHists():
     Args:
         configObj (Config): Config object.
     '''
-    def __init__(self,projPath,binnings,hist_map,readOnly=False):
+    def __init__(self,projPath,binnings,hist_map,readOnly=False,trimSig=False):
         self.filename = projPath + 'organized_hists.root'
         self.hist_map = hist_map
 
@@ -370,11 +370,11 @@ class OrganizedHists():
             self.file = ROOT.TFile.Open(self.filename,"OPEN")
         else:
             self.file = ROOT.TFile.Open(self.filename,"RECREATE")
-            self.Add(binnings)
+            self.Add(binnings, trimSig)
             self.file.Close()
             self.file = ROOT.TFile.Open(self.filename,"OPEN")
 
-    def Add(self, binnings):
+    def Add(self, binnings, trimSig=False):
         '''Manipulate all histograms in self.hist_map and save them to organized_hists.root.
 
         Returns:
@@ -399,6 +399,17 @@ class OrganizedHists():
 
                 h.SetTitle(row.out_histname)
                 h.SetFillColor(row.color)
+
+                ## Set low-occupancy signal bins to 0 to avoid fit issues in empty data bins - AWB 2024.05.21
+                if trimSig and 'Htoaato4b_mA' in row.out_histname:
+                    max_occ = h.GetMaximum()
+                    for iX in range(1, h.GetNbinsX()+1):
+                        for iY in range(1, h.GetNbinsY()+1):
+                            bin_occ = h.GetBinContent(iX, iY)
+                            if bin_occ < 0.05*max_occ:
+                                print('Signal bin (%d,%d) = %.2f (max = %.2f), set to 0.' % (iX, iY, bin_occ, max_occ))
+                                h.SetBinContent(iX, iY, 0)
+                                h.SetBinError(iX, iY, 0)
 
                 self.file.WriteTObject(h, row.out_histname)
                 self.CreateSubRegions(h, binning)
@@ -473,6 +484,7 @@ def _keyword_replace(df,col_strs):
         pandas.DataFrame: The manipulated DataFrame copy.
     '''
     def _batch_replace(row,s=None):
+        # print('_batch_replace process = %s, region = %s, syst = %s' % (row.alias, row.region, row.variation_alias))
         if pandas.isna(row[s]):
             return nan
         else:

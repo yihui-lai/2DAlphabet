@@ -12,35 +12,95 @@ from TwoDAlphabet.alphawrap import BinnedDistribution, ParametricFunction
 from TwoDAlphabet.helpers import make_env_tarball
 import os
 import sys
+import math
 
 VERBOSE = True
-NTOY    = 25        ## Number of toys for goodness-of-fit (GoF) test
-SIGMD   = 'ggH'     ## Higgs production mode, e.g. ggH, ZH, ...
+NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
+CAT     = 'XXHi'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
+CATL    = CAT       ## Selection category with lepton "l" instead of mu "m" or ele "e"
 MASSH   = 'mass'    ## Higgs mass regression (mass, msoft, pnet)
-MASSA   = '30'      ## Mass of "a" boson
+MASSESA = ['15','30','55']  ## Masses of "a" boson
+MASSA   = ('%sto%s' % (MASSESA[0], MASSESA[-1]) if len(MASSESA) > 1 else MASSESA[0])
+WP      = 'WP60'    ## Hto4b efficiency working point
+YEAR    = '2018'    ## Data year
 ## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
 ## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
-# FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','2d1','1d2','2d2',
+# FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','1d1','2d1','1d2','2d2',
 #            'e0x0','e1x0','e0x1','e1x1','e1x2','e2x1','e2x2','e2d1','e1d2','e2d2']
-if SIGMD == 'ggH':
-    FIT     =  '2d2C' ## Default for ggH: 2nd order poly in m(H) and m(a), uncorrelated
+SS_DIR = '/eos/cms/store/user/ssawant/htoaa/analysis/'
+HB_DIR = '/afs/cern.ch/user/h/hboucham/public/'
+MD_DIR = '/afs/cern.ch/user/m/moanwar/public/'
+AB_DIR = '/afs/cern.ch/work/a/abrinke1/public/HiggsToAA/coffea/eventloop/plots/'
+
+if CAT == 'gg0l' or CAT == 'gg0lIncl' or CAT == 'gg0lHi' or CAT == 'gg0lLo':
+    # PATH    = SS_DIR+'20240530_ggH0l_for2DAlphabet/2018/2DAlphabet_inputFiles'
+    PATH    = SS_DIR+'20240627_gg0l_1/2018/2DAlphabet_inputFiles/'+CAT
+    SIGS    = ['ggH']
+    FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
     FITLIST = ['2d2C']
-    NOMTF   = 0.11    ## Nominal fail-to-pass transfer factor (11%)
-if SIGMD == 'ZH':
-    FIT     =  '0x0'  ## Default for ZH: flat transfer factor
+    NOMTF   = 0.1
+if CAT == 'VBFjj':
+    PATH    = MD_DIR+'forAndrew/2DAlphabetfiles'
+    SIGS    = ['VBFH']
+    FIT     =  '2d2C'
+    FITLIST = ['2d2C']
+    NOMTF   = 0.10    ## Nominal fail-to-pass transfer factor (10%)
+if CAT == 'Vjj':
+    # PATH    = SS_DIR+'20240530_VHHadronicMode_for2DAlphabet_1/2018/2DAlphabet_inputFiles'
+    PATH    = SS_DIR+'20240626_Vjj/2018/2DAlphabet_inputFiles/Vjj'
+    SIGS    = ['WH','ZH']
+    FIT     =  '1d1C'
+    FITLIST = ['1d1C']
+    NOMTF   = (0.15 if WP == 'WP40' else 0.22)
+if CAT == 'Wlv' or CAT == 'Wmv' or CAT == 'Wev':
+    PATH    = HB_DIR+'2D_Wlv_052824/%s' % WP
+    CATL    = 'Wlv'
+    SIGS    = ['WH']
+    FIT     =  '1x1C'
+    FITLIST = ['1x1C']
+    NOMTF   = 0.12    ## Nominal fail-to-pass transfer factor (12%)
+if CAT == 'WlvLo' or CAT == 'ttblv':
+    PATH    = HB_DIR+'2D_062324/%s' % WP
+    SIGS    = ['WH'] if CAT.startswith('Wlv') else ['ttH']
+    FIT     =  '1x1C'
+    FITLIST = ['1x1C']
+    NOMTF   = 0.10    ## Nominal fail-to-pass transfer factor (8-12%)
+if CAT == 'Zvv' or CAT == 'ZvvHi' or CAT == 'ZvvLo':
+    # PATH    = SS_DIR+'20240529_ZH_4b2nu_for2DAlphabet/2018/2DAlphabet_inputFiles'
+    PATH    = SS_DIR+'20240626_Zvv_METDataset_2/2018/2DAlphabet_inputFiles/'+CAT
+    SIGS    = ['ZH']
+    FIT     =  '1d1C'
+    FITLIST = ['1d1C']
+    NOMTF   = 0.17
+if CAT == 'Zll' or CAT == 'Zmm' or CAT == 'Zee':
+    PATH    = HB_DIR+'2D_Alphabet_root_052424/%s' % WP
+    CATL    = 'Zll'
+    SIGS    = ['ZH']
+    FIT     =  '0x0'  ## Default for Z to ll: flat transfer factor
     FITLIST = ['0x0']
-    NOMTF   = 0.0013  ## Nominal fail-to-pass transfer factor (0.13%)
+    NOMTF   = 0.18    ## Nominal fail-to-pass transfer factor (18%)
+if CAT == 'LepHi' or CAT == 'XXHi':  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
+    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT+'/2024_07_09'
+    SIGS    = ['WH','ttH','ZH']
+    FIT     =  '1d1C'
+    FITLIST = ['1d1C']
+    NOMTF   = 0.11
+if CAT == 'XXLo':  ## WlvLo + ttblv + ZvvLo
+    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT+'/2024_07_09'
+    SIGS    = ['WH','ttH','ZH']
+    FIT     =  '1x1C'
+    FITLIST = ['1x1C']
+    NOMTF   = 0.11
 
 
 '''--------------------------Helper functions---------------------------'''
-## Use name of "pass" region to infer name of "fail" region
-## example.py includes a "loose" region as well, not need for this analysis
-## Need uniform convention for upper- or lower-case "p" and "f" - AWB 2024.05.21
-def _get_other_region_names(pass_reg_name):
-    if 'pass' in pass_reg_name:
-        return pass_reg_name, pass_reg_name.replace('pass','fail')
-    elif 'Pass' in pass_reg_name:
-        return pass_reg_name, pass_reg_name.replace('Pass','Fail')
+def _sig_names():
+    '''Set up list of signal names for multiple Higgs production modes, mass(a) values'''
+    signames = []
+    for sig in SIGS:
+        for massA in MASSESA:
+            signames.append('%s_%stoaato4b_mA_%s_%s' % (CAT, sig, massA, YEAR))
+    return signames
 
 def _select_signal(row, args):
     '''Used by the Ledger.select() method to create a subset of a Ledger.
@@ -67,6 +127,8 @@ def _select_signal(row, args):
     Returns:
         Bool: True if keeping the row, False if dropping.
     '''
+    if VERBOSE > 1: print('_select_signal: type = %s, process = %s,' % (row.process_type, row.process)
+                          +'signame = %s, order = %s' % (args[0], args[1]))
     signame    = args[0]
     poly_order = args[1]
     if row.process_type == 'SIGNAL':
@@ -83,10 +145,11 @@ def _select_signal(row, args):
         return True
 
 def _load_rpf(poly_order):
-    twoD_for_rpf = TwoDAlphabet('%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA),
-                                '%stoaato4b.json' % SIGMD, loadPrevious=True,
-                                findreplace={'SIGNAME':['%stoaa_mA_%s' % (SIGMD, MASSA)]})
-    params_to_set = twoD_for_rpf.GetParamsOnMatch('rpf.*'+poly_order, 'mH_%s_mA_%s_area' % (MASSH, MASSA), 'b')
+    twoD_for_rpf = TwoDAlphabet('fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR),
+                                '%s_Htoaato4b.json' % CATL, loadPrevious=True,
+                                findreplace={'path':PATH, 'SIGNAME':_sig_names(),
+                                             'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
+    params_to_set = twoD_for_rpf.GetParamsOnMatch('rpf.*'+poly_order, 'mA_all_area', 'b')
     return {k:v['val'] for k,v in params_to_set.items()}
 
 def _load_rpf_as_SR(poly_order):
@@ -118,6 +181,7 @@ def _generate_poly(fit_name, verb=False):
     elif '2x1' in fit_name: fit_poly = '@0*((1+@1*x+@4*x*x)*(1+@2*y)+@3*x*y+@5*x*x*y)'
     elif '1x2' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y+@4*y*y)+@3*x*y+@5*x*y*y)'
     elif '2x2' in fit_name: fit_poly = '@0*((1+@1*x+@4*x*x)*(1+@2*y+@5*y*y)+@3*x*y+@6*x*x*y+@7*x*y*y+@8*x*x*y*y)'
+    elif '1d1' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y))'
     elif '2d1' in fit_name: fit_poly = '@0*((1+@1*x+@3*x*x)*(1+@2*y))'
     elif '1d2' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y+@3*y*y))'
     elif '2d2' in fit_name: fit_poly = '@0*((1+@1*x+@3*x*x)*(1+@2*y+@4*y*y))'
@@ -127,7 +191,7 @@ def _generate_poly(fit_name, verb=False):
         sys.exit()
     if verb: print('\nUsing fit function %s: %s' % (fit_name, fit_poly))
     ## Variable replacements: "C" = central, "M" = mass ratio
-    ## "M" gives m(a)/m(H) for m(a) = [10,64], m(H) = [70,200] (60-200 for msoft)
+    ## "M" gives m(a)/m(H) for m(a) = [10,62], m(H) = [60,220]
     fit_len = len(fit_name)
     if fit_name.startswith('e'): fit_len -= 1
     if fit_len > 3:
@@ -138,22 +202,14 @@ def _generate_poly(fit_name, verb=False):
                 if verb: print('  * Replacing "y" with "y-0.5" in fit function')
                 fit_poly = fit_poly.replace('y','(y-0.5)')
             elif fit_name[3] == 'M' or (fit_name.startswith('e') and fit_name[4] == 'M'):
-                if MASSH == 'msoft':
-                    if verb: print('  * Replacing "y" with "((y-(17/54))/(x+(60/140)))" in fit function')
-                    fit_poly = fit_poly.replace('y','((y-(17/54))/(x+(60/140)))')
-                else:
-                    if verb: print('  * Replacing "y" with "((y-(17/54))/(x+(70/130)))" in fit function')
-                    fit_poly = fit_poly.replace('y','((y-(17/54))/(x+(70/130)))')
+                if verb: print('  * Replacing "y" with "((y+(10/52)-0.5)/(x+(60/160)))" in fit function')
+                fit_poly = fit_poly.replace('y','((y+(10/52)-0.5)/(x+(60/160)))')
             else:
                 print('\n\n*** ERROR! Invalid fit function %s! Quitting. ***' % fit_name)
                 sys.exit()
         elif fit_len == 4 and fit_name.endswith('M'):
-            if MASSH == 'msoft':
-                if verb: print('  * Replacing "y" with "((y+(10/54))/(x+(60/140)))" in fit function')
-                fit_poly = fit_poly.replace('y','((y+(10/54))/(x+(60/140)))')
-            else:
-                if verb: print('  * Replacing "y" with "((y+(10/54))/(x+(70/130)))" in fit function')
-                fit_poly = fit_poly.replace('y','((y+(10/54))/(x+(70/130)))')
+            if verb: print('  * Replacing "y" with "((y+(10/52))/(x+(60/160)))" in fit function')
+            fit_poly = fit_poly.replace('y','((y+(10/52))/(x+(60/160)))')
         else:
             if verb: print('\n\n*** ERROR! Invalid fit function %s! Quitting. ***' % fit_name)
             sys.exit()
@@ -172,7 +228,7 @@ def _get_rpf_options():
         fit_poly = _generate_poly(fName)
         _rpf_options[fName] = { 'form': fit_poly,
                                 'constraints': _generate_constraints(fit_poly) }
-        print(_rpf_options[fName])
+        if VERBOSE: print(_rpf_options[fName])
     return _rpf_options
 
 '''---------------Primary functions---------------------------'''
@@ -192,20 +248,22 @@ def test_make(SRorCR):
 
     # TwoDAlphabet class defined in TwoDAlphabet/twoDalphabet.py
     # First argument is the "tag", i.e. output directory name, in this case including the
-    # Higgs production mode (SIGMD), AK8 mass algo (MASSH), and signal "a" boson mass (MASSA)
+    # Higgs production mode (CAT), AK8 mass algo (MASSH), and signal "a" boson mass (MASSA)
     # Second argument is JSON config file, third argument says we're starting from scratch
     # findreplace adds lines to GLOBAL part of JSON (_addFindReplace in TwoDAlphabet/config.py)
     # in this case a specific signal model (production mode and "a" boson mass)
-    twoD = TwoDAlphabet('%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA),
-                        '%stoaato4b.json' % SIGMD, loadPrevious=False, verbose=VERBOSE,
-                        findreplace={'SIGNAME':['%stoaa_mA_%s' % (SIGMD, MASSA)]})
+    # 'SIGNAME' also gets used as the $process in _batch_replace
+    twoD = TwoDAlphabet('fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR),
+                        '%s_Htoaato4b.json' % CATL, loadPrevious=False, verbose=VERBOSE,
+                        findreplace={'path':PATH, 'SIGNAME':_sig_names(),
+                                     'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
     if VERBOSE: print('Completed first TwoDAlphabet with loadPrevious=False')
     # Initial "QCD" template simply equals data - all MC backgrounds
-    # Is this really what we want for the "pass" region as well? - AWB 2024.05.21
+    # Is this really what we want for the "Pass" region as well? - AWB 2024.05.21
     qcd_hists = twoD.InitQCDHists(VERBOSE)
 
     # This loop will only run once since the only regions are pass or fail
-    for ps, fl in [_get_other_region_names(r) for r in twoD.ledger.GetRegions() if (('pass' in r) or ('Pass' in r))]:
+    for ps, fl in [['Pass', 'Fail'] for r in twoD.ledger.GetRegions() if r == 'Pass']:
         if VERBOSE: print('ps = %s, fl = %s' % (ps, fl))
         # Gets the Binning object and meta information (`_unused`) that we don't care about.
         # The Binning object is needed for constructing the Alphabet objects.
@@ -268,11 +326,8 @@ def test_make(SRorCR):
             #     qcd_p = qcd_f*rpf
             # The Multiply method will make a new set of RooFormulaVars defined by multiplying the RooAbsArgs
             # of each object together. Other methods exist for adding and dividing, where Add() can take an
-            # optional factor so that subtraction is possible.  Need to settle on "Pass" vs. "pass". - AWB 2024.05.21
-            if 'ggH' in SIGMD:
-                qcd_p = qcd_f.Multiply(fail_name.replace('Fail','Pass')+'_'+opt_name, qcd_rpf)
-            else:
-                qcd_p = qcd_f.Multiply(fail_name.replace('fail','pass')+'_'+opt_name, qcd_rpf)
+            # optional factor so that subtraction is possible.
+            qcd_p = qcd_f.Multiply(fail_name.replace('Fail','Pass')+'_'+opt_name, qcd_rpf)
 
             # Now add the final models to the `twoD` object for tracking
             # Note that we have unique process names so they are identifiable
@@ -293,14 +348,13 @@ def test_fit(SRorCR):
     when a directory/area is being specified vs when a signal is being selected,
     I've redundantly prepended the "subtag" argument with "_area".
     '''
-    # assert SRorCR == 'CR' # Setup for either SR or CR but don't want to unblind accidentally until ready
     if SRorCR == 'SR':
         print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
 
     # So that the find-replace in the config doesn't need to be done again if I want
     # the SR (since it would have been performed already by test_make()), I grab
     # the runConfig.json that's already been saved in the created directory.
-    working_area = '%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA)
+    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
 
     # Access the Ledger and perform a selection on it to create a subset
@@ -313,7 +367,10 @@ def test_fit(SRorCR):
     # The select() method takes as a function as its first argument
     # and any args to pass to that function as the remiaining arguments
     # to select(). See _select_signal for how to construct the function.
-    subset = twoD.ledger.select(_select_signal, '%stoaa_mA_%s' % (SIGMD, MASSA), FIT)
+    # Construct subsets for all mA values together and for middle mA.
+    midMA = MASSESA[math.floor(len(MASSESA) / 2)]
+    subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', FIT)
+    subsetMid = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR), FIT)
 
     # Make card reads the ledger and creates a Combine card from it.
     # The second argument specifices the sub-directory to save the card in.
@@ -324,25 +381,30 @@ def test_fit(SRorCR):
     # workspace is desired. Additionally, a different dataset can be supplied via
     # toyData but this requires supplying almost the full Combine card line and
     # is reserved for quick hacks by those who are familiar with Combine cards.
-    twoD.MakeCard(subset, 'mH_%s_mA_%s_area' % (MASSH, MASSA))
+    twoD.MakeCard(subsetAll, 'mA_all_area')
+    twoD.MakeCard(subsetMid, 'mA_%s_area' % midMA)
 
     # Run the fit! Will run in the area specified by the `subtag` (ie. sub-directory) argument
     # and use the card in that area. Via the cardOrW argument, a different card or workspace can be
     # supplied (passed to the -d option of Combine). 
-    twoD.MLfit('mH_%s_mA_%s_area' % (MASSH, MASSA), rMin=0, rMax=20, verbosity=0)
+    twoD.MLfit('mA_all_area', rMin=0, rMax=20, verbosity=0)
+    twoD.MLfit('mA_%s_area' % midMA, rMin=0, rMax=20, verbosity=0)
 
 def test_plot(SRorCR):
     '''Load the twoD object again and run standard plots for a specific subtag.
     Assumes loading the Ledger in this sub-directory but a different one can
     be provided if desired.
     '''
-    # assert SRorCR == 'CR' # Setup for either SR or CR but don't want to unblind accidentally until ready
     if SRorCR == 'SR':
         print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
-    working_area = '%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA)
+    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
-    subset = twoD.ledger.select(_select_signal, '%stoaa_mA_%s' % (SIGMD, MASSA), FIT)
-    twoD.StdPlots('mH_%s_mA_%s_area' % (MASSH, MASSA), subset)
+    midMA = MASSESA[math.floor(len(MASSESA) / 2)]
+    subsetMid = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR), FIT)
+    twoD.StdPlots('mA_%s_area' % midMA, subsetMid)
+    ## For some reason PostFit2DShapesFromWorkspace segfaults in mA_all_area - AWB 2024.05.25
+    subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', FIT)
+    twoD.StdPlots('mA_all_area', subsetAll)
 
 def test_limit(SRorCR):
     '''Perform a blinded limit. To be blinded, the Combine algorithm (via option `--run blind`)
@@ -350,29 +412,30 @@ def test_limit(SRorCR):
     in our true "pre-fit", we need to load in the parameter values from a different fit so we have
     something reasonable to create the Asimov toy. 
     '''
-    poly_order = FIT
     # Returns a dictionary of the TF parameters with the names as keys and the post-fit values as dict values.
-    params_to_set = _load_rpf_as_SR(poly_order) if SRorCR == 'SR' else _load_rpf()
-    working_area = '%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA)
+    params_to_set = _load_rpf_as_SR(FIT) if SRorCR == 'SR' else _load_rpf()
+    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
 
     # The iterWorkspaceObjs attribute stores the key-value pairs in the JSON config 
     # where the value is a list. This allows for later access like here so the user
     # can loop over the list values without worrying if the config has changed over time
     # (necessitating remembering that it changed and having to hard-code the list here).
-    print ('Possible signals: %s' % twoD.iterWorkspaceObjs['SIGNAME'])
-    for signame_raw in twoD.iterWorkspaceObjs['SIGNAME']:
-        # signame_raw is going too look like SUSY_GluGluH_01J_HToAATo4B_M-XX_HPtAbv150
-        signame = signame_raw.replace('M-XX', 'M-%s' % MASSA)
-        areaname = 'mH_%s_mA_%s' % (MASSH, MASSA)
-        print ('Performing limit for %s (area %s)' % (signame, areaname))
+    if VERBOSE: print ('Possible signals: %s' % twoD.iterWorkspaceObjs['SIGNAME'])
+
+    ## for signame in twoD.iterWorkspaceObjs['SIGNAME']:
+    areaname = None
+    for massA in MASSESA:
+        signame = 'Htoaato4b_mA_%s_%s' % (massA, YEAR)
+        areaname = 'mA_%s_area' % massA
+        print ('Performing limit for %s in %s' % (signame, areaname))
 
         # Make a subset and card as in test_fit()
-        subset = twoD.ledger.select(_select_signal, signame, poly_order)
-        twoD.MakeCard(subset, areaname+'_area')
+        subset = twoD.ledger.select(_select_signal, signame, FIT)
+        twoD.MakeCard(subset, areaname)
         # Run the blinded limit with our dictionary of TF parameters
         twoD.Limit(
-            subtag=areaname+'_area',
+            subtag=areaname,
             blindData=True,
             verbosity=0,
             setParams=params_to_set,
@@ -383,20 +446,20 @@ def test_GoF(SRorCR):
     '''Perform a Goodness of Fit test using an existing working area.
     Requires using data so SRorCR is enforced to be 'CR' to avoid accidental unblinding.
     '''
-    # assert SRorCR == 'CR' # Setup for either SR or CR but don't want to unblind accidentally until ready
     if SRorCR == 'SR':
         print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
 
-    poly_order = FIT
-    working_area = '%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA)
+    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
 
     # If the card doesn't exist, make it (in the case that test_fit() wasn't run first).
-    signame = '%stoaa_mA_%s' % (SIGMD, MASSA)
-    areaname = 'mH_%s_mA_%s' % (MASSH, MASSA)
-    if not os.path.exists(twoD.tag+'/'+areaname+'_area/card.txt'):
-        subset = twoD.ledger.select(_select_signal, signame, poly_order)
-        twoD.MakeCard(subset, areaname+'_area')
+    # Only need to run with one signal model, since we fix signal strength to 0 anyway.
+    midMA = MASSESA[math.floor(len(MASSESA) / 2)]
+    signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR)
+    areaname = 'mA_%s_area' % midMA
+    if not os.path.exists(twoD.tag+'/'+areaname+'/card.txt'):
+        subset = twoD.ledger.select(_select_signal, signame, FIT)
+        twoD.MakeCard(subset, areaname)
     # Run the Goodness of fit test with NTOY toys, r frozen to 0, TF parameters set to prefit.
     # This method always runs the evaluation on data interactively but the toy generation and evaluation
     # can be sent to condor with condor=True and split over several jobs with njobs=<int>.
@@ -404,128 +467,125 @@ def test_GoF(SRorCR):
     # you must unblind data. If you wish to use a toy dataset instead, you should set that
     # up when making the card.
     twoD.GoodnessOfFit(
-        areaname+'_area', ntoys=NTOY, freezeSignal=0,
+        areaname, ntoys=NTOY, freezeSignal=0,
         condor=False, njobs=1
     )
 
     # Note that no plotting is done here since one needs to wait for the condor jobs to finish first.
     # See test_GoF_plot() for plotting (which will also collect the outputs from the jobs).
 
-def test_SigInj(SRorCR):
+def test_SigInj(SRorCR, massA):
     '''Perform a signal injection test'''
     assert SRorCR in ['SR','CR']
 
-    poly_order = FIT
-    signame = '%stoaa_mA_%s' % (SIGMD, MASSA)
-    areaname = 'mH_%s_mA_%s' % (MASSH, MASSA)
-    working_area = '%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA)
+    signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR)
+    areaname = 'mA_%s_area' % massA
+    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
 
     # If the card doesn't exist, make it (in the case that test_fit() wasn't run first).
-    if not os.path.exists(twoD.tag+'/'+areaname+'_area/card.txt'):
-        subset = twoD.ledger.select(_select_signal, signame, poly_order)
-        twoD.MakeCard(subset, areaname+'_area')
+    if not os.path.exists(twoD.tag+'/'+areaname+'/card.txt'):
+        subset = twoD.ledger.select(_select_signal, signame, FIT)
+        twoD.MakeCard(subset, areaname)
 
     # Perform the signal injection test with r=0 and with NTOY toys split over 10 jobs on condor.
     # Because the data is blinded, we feed in the parameters from a previous fit so that we
     # have a model from which to generate toys.
     twoD.SignalInjection(
-        areaname+'_area', injectAmount=0,
+        areaname, injectAmount=0,
         ntoys=NTOY,
         blindData=True,
-        setParams=_load_rpf_as_SR(poly_order),
+        setParams=_load_rpf_as_SR(FIT),
         condor=False, njobs=1)
 
 def test_GoF_plot(SRorCR):
-    '''Plot the GoF in htoaato4b_fits_<SRorCR>/<MASSH>_mA_<MASSA>_area (condor=True indicates that condor jobs need to be unpacked)'''
-    plot.plot_gof('%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA),
-                  'mH_%s_mA_%s_area' % (MASSH, MASSA), condor=False)
+    '''Plot the GoF in fits_<CAT>_Htoaato4b_mH_<MASSH>_mA_<MASSA>_<WP>_<YEAR>/mA_<MASSA>_area (condor=True indicates that condor jobs need to be unpacked)'''
+    midMA = MASSESA[math.floor(len(MASSESA) / 2)]
+    plot.plot_gof('fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR),
+                  'mA_%s_area' % midMA, condor=False)
 
-def test_SigInj_plot(SRorCR):
-    '''Plot the signal injection test for r=0 injected and stored in htoaato4b_fits_<SRorCR>/<MASSH>_mA_<MASSA>_area
+def test_SigInj_plot(SRorCR, massA):
+    '''Plot the signal injection test for r=0 injected and stored in fits_<CAT>_Htoaato4b_mH_<MASSH>_mA_<MASSA>_<WP>_<YEAR>/mA_<MASSA>_area
     (condor=True indicates that condor jobs need to be unpacked)'''
-    plot.plot_signalInjection('%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA),
-                              'mH_%s_mA_%s_area' % (MASSH, MASSA), injectedAmount=0, condor=False)
+    plot.plot_signalInjection('fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR),
+                              'mA_%s_area' % massA, injectedAmount=0, condor=False)
 
-def test_Impacts(SRorCR):
+def test_Impacts(SRorCR, massA):
     '''Calculate the nuisance parameter impacts. The parameters corresponding to the unconstrained bins
     of the fail region are ignored. Assumes that a fit has already been performed so that the post-fit
     uncertainties can be used for the scans. However, another card or workspace can be specified as well
     as a dictionary of parameters to set before running (setParams). With blindData=True, a pre-fit Asimov
-    toy is generated for the sake of performing the scans. Since we're only using the CR here, blindData
-    is set to False.
+    toy is generated for the sake of performing the scans. Since we're using the SR, blindData is set to True
     '''
-    # assert SRorCR == 'CR' # Setup for either SR or CR but don't want to unblind accidentally until ready
     if SRorCR == 'SR':
         print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
-    working_area = '%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA)
+    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
     twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
 
     # We need to run impacts in the SR for them to make sense but we can't use the data in the SR while blinded.
     # So we need a toy to play with instead.
-    poly_order = FIT
-    subset = twoD.ledger.select(_select_signal, 'mH_%s_mA_%s' % (MASSH, MASSA), poly_order)
+    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR), FIT)
     # Make a new area to play in
-    twoD.MakeCard(subset, 'mH_%s_mA_%s_impactArea' % (MASSH, MASSA))
+    twoD.MakeCard(subset, 'mA_%s_impactArea' % massA)
 
     # Generate the toy
     toy_file_path = twoD.GenerateToys(
-        'impactToy', 'mH_%s_mA_%s_impactArea' % (MASSH, MASSA),
-        card='card.txt', 
-        workspace=None, 
+        'impactToy', 'mA_%s_impactArea' % massA,
+        card='card.txt',
+        workspace=None,
         ntoys=1, seed=123456, expectSignal=0,
-        setParams=_load_rpf_as_SR(poly_order)
+        setParams=_load_rpf_as_SR(FIT)
     )
     # Run the parameter impacts on the toy with the pre-fit workspace/card
     twoD.Impacts(
-        'mH_%s_mA_%s_impactArea' % (MASSH, MASSA),
-        cardOrW='card.txt',
+        'mA_%s_impactArea' % massA,
+        cardOrW='card.txt', blindData=True,
         extra='-t 1 --toysFile %s' % toy_file_path.split('/')[-1]
     )
 
-def test_generate_for_SR():
+def test_generate_for_SR(massA):
     '''NOTE: This is an expert-level manipulation that requires understanding the underlying Combine
     commands. Use and change it only if you understand what each step is doing.
     
     Use the CR fit result to generate and fit a toy in the SR (without looking at SR data).
     There are two ways to do this which will be broken up into toyArea1 and toyArea2.'''
     # Load in the SR TwoDAlphabet object
-    twoD = TwoDAlphabet('%stoaato4b_mH_%s_mA_%s_fits' % (SIGMD, MASSH, MASSA),
-                        '%stoaato4b_fits_SR/runConfig.json' % SIGMD, loadPrevious=True)
+    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
+    twoD = TwoDAlphabet(working_area, '%s/runConfig.json' % working_area, loadPrevious=True)
 
-    subset = twoD.ledger.select(_select_signal, 'mH_%s_mA_%s' % (MASSH, MASSA), FIT)
+    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR), FIT)
     params_to_set = _load_rpf_as_SR(FIT)
 
     ###################################
     #-------- Version 1 --------------#
     ###################################
     # We'll make a card for each version to ensure the directory structure is made - they will be identical though to start.
-    twoD.MakeCard(subset, 'mH_%s_mA_%s_toyArea1' % (MASSH, MASSA))
+    twoD.MakeCard(subset, 'mA_%s_toyArea1' % massA)
 
     # Perform a fit as normal but via the `extra` arg, provide some commands
     # directly to combine to generate 1 toy, with seed 123456, and with r=0.
     # Note that --expectSignal 0 will generate with r=0 AND fit with r=0.
     twoD.MLfit(
-        subtag='mH_%s_mA_%s_toyArea1' % (MASSH, MASSA),
+        subtag='mA_%s_toyArea1' % massA,
         setParams=params_to_set,
         rMin=0,rMax=5,verbosity=0,
         extra='-t 1 -s 123456 --expectSignal 0'
     )
     # Plot!
-    twoD.StdPlots('mH_%s_mA_%s_toyArea1' % (MASSH, MASSA), ledger=subset)
+    twoD.StdPlots('mA_%s_toyArea1' % massA, ledger=subset)
 
     ###################################
     #-------- Version 2 --------------#
     ###################################
     # We'll make a card for each version to ensure the directory structure is made - they will be identical though to start.
-    twoD.MakeCard(subset, 'mH_%s_mA_%s_toyArea2' % (MASSH, MASSA))
+    twoD.MakeCard(subset, 'mA_%s_toyArea2' % massA)
     # First generate a toy by itself. This means we can set r for *just* this step
     # as opposed to Version 1 where r was set for generation and for fitting.
     # Note that this method will generate frequentist toys but always skip the frequentist fit.
     # So if you'd like to generate from a post-fit workspace, you should fit first
     # and then provide a workspace snapshot
     toy_file_path = twoD.GenerateToys(
-        'toys', 'mH_%s_mA_%s_toyArea2' % (MASSH, MASSA),
+        'toys', 'mA_%s_toyArea2' % massA,
         card='card.txt', workspace=None, # A card or workspace MUST be defined manually or one of these options should be set to True to use a default.
         ntoys=1, seed=123456, expectSignal=0,
         setParams=params_to_set
@@ -534,13 +594,13 @@ def test_generate_for_SR():
     # to access our already-generated toy.
     # Note that r is now freely floating in this fit again.
     twoD.MLfit(
-        subtag='mH_%s_mA_%s_toyArea2' % (MASSH, MASSA),
+        subtag='mA_%s_toyArea2' % massA,
         setParams=params_to_set,
         rMin=0,rMax=5,verbosity=0,
         extra='-t 1 --toysFile=%s' % toy_file_path.split('/')[-1]
     )
     # Plot!
-    twoD.StdPlots('mH_%s_mA_%s_toyArea2' % (MASSH, MASSA), ledger=subset)
+    twoD.StdPlots('mA_%s_toyArea2' % massA, ledger=subset)
 
 if __name__ == '__main__':
     # Provided for convenience is this function which will package
@@ -556,10 +616,11 @@ if __name__ == '__main__':
     test_fit('SR')          ## Perform fits to data with models
     test_plot('SR')         ## Plot data vs. prediction, pre-fit and post-fit
     test_limit('SR')        ## Compute expected asymptotic limits
-    # test_GoF('SR')          ## Perform goodness-of-fit (GoF) test with toys
-    # test_SigInj('SR')       ## Presumably performs some signal injection test (?)
-    # test_Impacts('SR')      ## Test impact of systematic uncertainties (?)
-    # test_generate_for_SR()  ## Absolutely no idea (???)
+    test_GoF('SR')          ## Perform goodness-of-fit (GoF) test with toys
+    # midMA = MASSESA[math.floor(len(MASSESA) / 2)]
+    # test_SigInj('SR', midMA)       ## Presumably performs some signal injection test (?)
+    # test_Impacts('SR', midMA)      ## Test impact of systematic uncertainties (?)
+    # # test_generate_for_SR()  ## Absolutely no idea (???)
     # ## If using condor, run after condor jobs finish
-    # test_GoF_plot('SR')     ## Plot results of GoF tests
-    # test_SigInj_plot('SR')  ## Plot results of signal injection tests
+    test_GoF_plot('SR')     ## Plot results of GoF tests
+    # test_SigInj_plot('SR', midMA)  ## Plot results of signal injection tests

@@ -1,13 +1,12 @@
 {
-  "NAME": "GGHToAATo4B",
+  "NAME": "LepHi_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
       "SYSTEMATICS":[],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "comment": "Would be better to name file 'Data_18', but currently named 'Run2_data'",
-      "ALIAS": "Run2_data",
+      "ALIAS": "LepHi_Data_2018",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
@@ -33,9 +32,7 @@
   },
 
   "GLOBAL": {
-    "FILE": "$process.root",
-    "HIST": "hLeadingFatJetMass_vs_massA_Hto4b_avg_$region",
-    "path": "/eos/cms/store/user/ssawant/htoaa/analysis/20240304_GGFHto4b/2018/2DAlphabet_inputFiles"
+    "FILE": "$process.root"
   },
 
   "BINNING": {
@@ -43,18 +40,18 @@
       "X": {
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
-        "MIN": 70,
-        "MAX": 200,
-        "NBINS": 13,
-        "SIGSTART": 110,
-        "SIGEND": 150
+        "MIN": 60,
+        "MAX": 220,
+        "NBINS": 8,
+        "SIGSTART": 100,
+        "SIGEND": 140
       },
       "Y": {
         "NAME": "mA",
         "TITLE": "m_{a} (GeV)",
         "MIN": 10,
-        "MAX": 62,
-        "NBINS": 13
+        "MAX": 58,
+        "NBINS": 6
       }
     }
   },

@@ -377,13 +377,11 @@ class BinnedDistribution(Generic2D):
                     bin_name = '%s_bin_%s-%s'%(cat_name,xbin,ybin)
                     nzeros = self._nSurroundingZeros(cat_hist,xbin,ybin)
                     if constant or nzeros > 7:
-                        if verbose:
-                            print('\nFound %d surrounding zeros for (%d, %d), fixing to 1e-9' % (nzeros, xbin, ybin))
+                        if verbose: print('\n%d surrounding zeros for (%d, %d), fix to 1e-9' % (nzeros, xbin, ybin))
                         self.binVars[bin_name] = RooConstVar(bin_name, bin_name, cat_hist.GetBinContent(xbin,ybin))
                     else:
                         bin_val = cat_hist.GetBinContent(xbin,ybin)
-                        if verbose and bin_val < 5:
-                            print('\nBin (%d, %d) has only %d entries, resetting to 5' % (bin_val, xbin, ybin))
+                        if verbose and bin_val < 5: print('\nBin (%d, %d) has %d entries, set to 5' % (bin_val, xbin, ybin))
                         self.binVars[bin_name] = RooRealVar(bin_name, bin_name, max(5,bin_val), 1e-6, 1e6)
                         self.nuisances.append({'name':bin_name, 'constraint':'flatParam', 'obj': self.binVars[bin_name]})
                     self._varStorage.append(self.binVars[bin_name]) # For safety if we add shape templates            
