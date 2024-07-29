@@ -1,3 +1,15 @@
+# Running instructions
+```
+ssh -X -Y abrinke1@lxplus.cern.ch
+cd /afs/cern.ch/work/a/abrinke1/public/HiggsToAA/2DAlphabet/CMSSW_11_3_4/src/
+cmssw-cc7
+cmsenv
+bash
+source twoD-env/bin/activate
+cd 2DAlphabet/
+python3 htoaato4b.py
+```
+
 # Installation instructions
 ```
 cmsrel CMSSW_11_3_4
