@@ -13,13 +13,13 @@ R.gStyle.SetOptStat(0)  ## Don't display stat boxes
 ## User configuration
 VERBOSE  = False
 YEAR     = '2018'
-MASSESH  = ['mass','msoft','pnet']
-#MASSESH  = ['pnet']
+#MASSESH  = ['mass','msoft','pnet']
+MASSESH  = ['pnet']
 MASSESA  = ['15', '30', '55']
-WP_CUTS  = ['WP40', 'WP60', 'WP80']
-#WP_CUTS  = ['WP60']
+#WP_CUTS  = ['WP40', 'WP60', 'WP80']
+WP_CUTS  = ['WP60']
 MA_reg = 'a'
-DATE     = '2025_03_06_mA'+ MA_reg
+DATE     = '2025_03_08_mA'+ MA_reg
 
 # BKGS = ['Wlv', 'TT1l']
 
@@ -33,31 +33,31 @@ CAT_OUT = 'XXLo'
 #CAT_OUT = 'Zll'
 
 if CAT_OUT == 'XXHi':
-  CAT_INS = ['WlvHi', 'ttbblv', 'ttbll', 'Zll'] #, 'ZvvHi']
+  CAT_INS = ['WlvHi', 'ttbblv', 'ttbll', 'Zll', 'ZvvHi']
   CATS_IN = {}
   for cat in CAT_INS:
       CATS_IN[cat] = {}
-  CATS_IN['WlvHi']['dir']   = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_030625_mA'+MA_reg+'/'
+  CATS_IN['WlvHi']['dir']   = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_030725_mA'+MA_reg+'/'
   CATS_IN['WlvHi']['sigs']  = ['WHtoaato4b']
-  CATS_IN['ttbblv']['dir']  = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_030625_mA'+MA_reg+'/'
+  CATS_IN['ttbblv']['dir']  = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_030725_mA'+MA_reg+'/'
   CATS_IN['ttbblv']['sigs'] = ['ttHtoaato4b']
-  CATS_IN['ttbll']['dir']   = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_2Ltt_030625_mA'+MA_reg+'/'
+  CATS_IN['ttbll']['dir']   = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_2Ltt_030725_mA'+MA_reg+'/'
   CATS_IN['ttbll']['sigs']  = ['ttHtoaato4b']
-  CATS_IN['Zll']['dir']     = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_2LZ_030625_mA'+MA_reg+'/'
+  CATS_IN['Zll']['dir']     = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_2LZ_030725_mA'+MA_reg+'/'
   CATS_IN['Zll']['sigs']    = ['ZHtoaato4b']
-  #CATS_IN['ZvvHi']['dir']   = '/eos/cms/store/user/ssawant/htoaa/analysis/20250305_Zvv_FullSyst/2018/2DAlphabet_inputFiles/ZvvHi/'
-  #CATS_IN['ZvvHi']['sigs']  = ['ZHtoaato4b']
+  CATS_IN['ZvvHi']['dir']   = '/eos/cms/store/user/ssawant/htoaa/analysis/20250305_Zvv_FullSyst/2018/2DAlphabet_inputFiles/ZvvHi/'
+  CATS_IN['ZvvHi']['sigs']  = ['ZHtoaato4b']
 elif CAT_OUT == 'XXLo':
-  CAT_INS = ['WlvLo', 'ttblv'] #, 'ZvvLo']
+  CAT_INS = ['WlvLo', 'ttblv', 'ZvvLo']
   CATS_IN = {}
   for cat in CAT_INS:
      CATS_IN[cat] = {}
-  CATS_IN['WlvLo']['dir']   = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_030625_mA'+MA_reg+'/'
+  CATS_IN['WlvLo']['dir']   = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_030725_mA'+MA_reg+'/'
   CATS_IN['WlvLo']['sigs']  = ['WHtoaato4b']
-  CATS_IN['ttblv']['dir']  = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_030625_mA'+MA_reg+'/'
+  CATS_IN['ttblv']['dir']  = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_030725_mA'+MA_reg+'/'
   CATS_IN['ttblv']['sigs'] = ['ttHtoaato4b']
-  #CATS_IN['ZvvLo']['dir'] = '/eos/cms/store/user/ssawant/htoaa/analysis/20250305_Zvv_FullSyst/2018/2DAlphabet_inputFiles/ZvvLo/'
-  #CATS_IN['ZvvLo']['sigs']  = ['ZHtoaato4b']
+  CATS_IN['ZvvLo']['dir'] = '/eos/cms/store/user/ssawant/htoaa/analysis/20250305_Zvv_FullSyst/2018/2DAlphabet_inputFiles/ZvvLo/'
+  CATS_IN['ZvvLo']['sigs']  = ['ZHtoaato4b']
 elif CAT_OUT == 'Zll':
   CAT_INS = ['Zll'] #, 'ZvvHi']
   CATS_IN = {}
@@ -124,7 +124,7 @@ def main():
                         ## CHANGING THIS IN ORDER TO PROCESS SIDDHESH NEW CONVENTION ZVvv
                         if 'ssawant' in CATS_IN[cat]['dir']:
                             h_in_name = '%s_%s_%s_%s_vs_massA%s_%s_%s_Nom' % (cat, samp, YEAR, mH, MA_reg, wp, pf)
-                            print(h_in_name)
+                            #print(h_in_name)
                         else:
                             h_in_name = '%s_%s_%s_%s_%s_%s_Nom' % (cat, samp, YEAR, mH, wp, pf)
                         ##################################################################
@@ -154,10 +154,9 @@ def main():
                             yLi = h_in.GetYaxis().GetBinLowEdge(1)
                             yHi = h_in.GetYaxis().GetBinLowEdge(nYo+1)
                             if (nXo != nXi or nYo != nYi or xLo != xLi or xHo != xHi or yLo != yLi or yHo != yHi):
-                                print('\nMAJOR ERROR!!! %s is %d x %d, %s is %d x %d' % (h_out_name, nXo, nYo,
-                                                                                         nYi, nYi, h_in.GetName()))
-                                print('Spanning [%.1f-%.1f] x [%.1f-%.1f] vs. [%.1f-%.1f]' % (xLo, xHo, yLo, yHo,
-                                                                                              xLi, xHi, yLi, yHi))
+                                print(nXo, nXi, nYo, nYi, xLo, xLi, xHo, xHi, yLo, yLi, yHo, yHi)
+                                #print('MAJOR ERROR!!! %s is %d x %d, %s is %d x %d' % (h_out_name, nXo, nYo, nYi, nYi, h_in.GetName()))
+                                #print('Spanning [%.1f-%.1f] x [%.1f-%.1f] vs. [%.1f-%.1f]' % (xLo, xHo, yLo, yHo, xLi, xHi, yLi, yHi))
                                 sys.exit()
                             else:    
                                 h_outs[h_out_name].Add(h_in)

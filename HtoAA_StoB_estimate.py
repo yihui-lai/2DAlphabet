@@ -52,25 +52,25 @@ config = {
             "WP_CUTS": ['WP40', 'WP60', 'WP80']
         },
         "ttbll": {
-            "IN_DIR": '/afs/cern.ch/user/h/hboucham/public/2D_2Ltt_012925_v2/',  ## Double lepton
+            "IN_DIR": '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_2Ltt_021525_CAT34_mA34a_mH/',  ## Double lepton
             "SIGS": ['ttHtoaato4b'],
             "CATS": ['ttbll'],
             "WP_CUTS": ['WP60']
         },
         "Zll": {
-            "IN_DIR": '/afs/cern.ch/user/h/hboucham/public/2D_2LZ_012925_v2/',
+            "IN_DIR": '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_2LZ_021525_CAT34_mA34a_mH/',
             "SIGS": ['ZHtoaato4b'],
             "CATS": ['Zll'],
             "WP_CUTS": ['WP60']
         },
         "Wlv": {
-            "IN_DIR": '/afs/cern.ch/user/h/hboucham/public/2D_1L_012925_v2/',  ## Double lepton
+            "IN_DIR": '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_021525_CAT34_mA34a_mH/',  ## Double lepton
             "SIGS": ['WHtoaato4b'],
             "CATS": ['WlvHi', 'WlvLo'],
             "WP_CUTS": ['WP60']
         },
         "ttblv": {
-            "IN_DIR": '/afs/cern.ch/user/h/hboucham/public/2D_1L_012925_v2/',  ## Double lepton
+            "IN_DIR": '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D_1L_021525_CAT34_mA34a_mH/',  ## Double lepton
             "SIGS": ['ttHtoaato4b'],
             "CATS": ['ttblv', 'ttbblv'],
             "WP_CUTS": ['WP60']
@@ -99,10 +99,10 @@ config = {
 def main():
 
     # Specify category you would like to run
-    current = "Zll" 
+    #current = "Zll" 
     #current = "ttbll"
     #current = "Wlv"
-    #current = "ttblv"
+    current = "ttblv"
 
     print('\nInside HtoAA_StoB_est\n')
 
