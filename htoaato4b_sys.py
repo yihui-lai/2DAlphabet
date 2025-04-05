@@ -3,7 +3,8 @@
 ## 2D fit to mass of Higgs (AK8 jet) and mass of "a" boson (ParticleNet regression)
 ## Mass-decorrelated Hto4b ParticleNet tagger used to define pass/fail regions
 ## Both gluon fusion (ggH) and associated production modes used
-## - Andrew Brinkerhoff (abrinke1), May 2024, Baylor University
+## - Andrew Brinkerhoff (abrinke1), May 2024, Baylor Universityi
+## Script updated by Mohamed Darwish to include systematic shifts in 2D Alphabet
 
 from time import time
 from TwoDAlphabet import plot
@@ -16,95 +17,68 @@ import math
 
 VERBOSE = True
 NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
-#CAT     = 'Zll'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
-#CAT     = 'XXHi'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
-CAT     = 'XXLo'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
-#CAT     = 'XX'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
+CAT     = 'VBFjjLo' ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
 CATL    = CAT       ## Selection category with lepton "l" instead of mu "m" or ele "e"
-#MASSH   = 'mass'    ## Higgs mass regression (mass, msoft, pnet)
-MASSH   = 'pnet'    ## Higgs mass regression (mass, msoft, pnet)
-#MASSH   = 'msoft'    ## Higgs mass regression (mass, msoft, pnet)
+MASSH   = 'mass'    ## Higgs mass regression (mass, msoft, pnet)
 MASSESA = ['15','30','55']  ## Masses of "a" boson
 MASSA   = ('%sto%s' % (MASSESA[0], MASSESA[-1]) if len(MASSESA) > 1 else MASSESA[0])
-#WP      = 'WP40'    ## Hto4b efficiency working point
-WP      = 'WP60'    ## Hto4b efficiency working point
-#WP      = 'WP80'    ## Hto4b efficiency working point
+WP      = 'WP40'    ## Hto4b efficiency working point
 YEAR    = '2018'    ## Data year
 ## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
 ## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
-# FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','1d1','2d1','1d2','2d2',
+# FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','2d1','1d2','2d2',
 #            'e0x0','e1x0','e0x1','e1x1','e1x2','e2x1','e2x2','e2d1','e1d2','e2d2']
 SS_DIR = '/eos/cms/store/user/ssawant/htoaa/analysis/'
-HB_DIR = '/afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/'
-MD_DIR = '/afs/cern.ch/user/m/moanwar/public/'
-AB_DIR = '/afs/cern.ch/user/h/hboucham/work/H4B/CMSSW_11_3_4/src/2DAlphabet/plots/'
+HB_DIR = '/afs/cern.ch/user/h/hboucham/public/'
+MD_DIR = '/eos/user/m/moanwar/htoaa/analysis/VBF_channel'
 
-if CAT == 'gg0l' or CAT == 'gg0lIncl' or CAT == 'gg0lHi' or CAT == 'gg0lLo':
-    # PATH    = SS_DIR+'20240530_ggH0l_for2DAlphabet/2018/2DAlphabet_inputFiles'
-    PATH    = SS_DIR+'20240627_gg0l_1/2018/2DAlphabet_inputFiles/'+CAT
+if CAT == 'VBFjjLo':
+    PATH    = MD_DIR+'/2DAlphabetfiles_VBFjjLo_sys'
+    SIGS    = ['VBFH']
+    FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
+    FITLIST = ['2d2C']
+    NOMTF   = (0.1 if WP == 'WP40' else 0.6)
+
+if CAT == 'VBFjjHi':
+    PATH    = MD_DIR+'/2DAlphabetfiles_VBFjjHi_sys'
+    SIGS    = ['VBFH']
+    FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
+    FITLIST = ['2d2C']
+    NOMTF   = (0.1 if WP == 'WP40' else 0.6)
+
+if CAT == 'gg0l':
+    PATH    = MD_DIR+'/2DAlphabetfiles_gg0l/gg0l'
     SIGS    = ['ggH']
     FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
     FITLIST = ['2d2C']
-    NOMTF   = 0.1
-if CAT == 'VBFjj':
-    PATH    = MD_DIR+'forAndrew/2DAlphabetfiles'
-    SIGS    = ['VBFH']
-    FIT     =  '2d2C'
-    FITLIST = ['2d2C']
-    NOMTF   = 0.10    ## Nominal fail-to-pass transfer factor (10%)
+    NOMTF   = (0.1 if WP == 'WP40' else 0.6)
+
 if CAT == 'Vjj':
-    # PATH    = SS_DIR+'20240530_VHHadronicMode_for2DAlphabet_1/2018/2DAlphabet_inputFiles'
-    PATH    = SS_DIR+'20240626_Vjj/2018/2DAlphabet_inputFiles/Vjj'
+    PATH    = SS_DIR+'20240530_VHHadronicMode_for2DAlphabet_1/2018/2DAlphabet_inputFiles'
     SIGS    = ['WH','ZH']
     FIT     =  '1d1C'
     FITLIST = ['1d1C']
-    NOMTF   = (0.15 if WP == 'WP40' else 0.22)
+    NOMTF   = (0.1 if WP == 'WP40' else 0.5)
 if CAT == 'Wlv' or CAT == 'Wmv' or CAT == 'Wev':
     PATH    = HB_DIR+'2D_Wlv_052824/%s' % WP
     CATL    = 'Wlv'
     SIGS    = ['WH']
-    FIT     =  '1x1C'
+    FIT     =  '1x1C'  ## Default for Z to ll: flat transfer factor
     FITLIST = ['1x1C']
     NOMTF   = 0.12    ## Nominal fail-to-pass transfer factor (12%)
-if CAT == 'WlvLo' or CAT == 'ttblv':
-    PATH    = HB_DIR+'2D_062324/%s' % WP
-    SIGS    = ['WH'] if CAT.startswith('Wlv') else ['ttH']
-    FIT     =  '1x1C'
-    FITLIST = ['1x1C']
-    NOMTF   = 0.10    ## Nominal fail-to-pass transfer factor (8-12%)
-if CAT == 'Zvv' or CAT == 'ZvvHi' or CAT == 'ZvvLo':
-    # PATH    = SS_DIR+'20240529_ZH_4b2nu_for2DAlphabet/2018/2DAlphabet_inputFiles'
-    PATH    = SS_DIR+'20240626_Zvv_METDataset_2/2018/2DAlphabet_inputFiles/'+CAT
+if CAT == 'Zvv':
+    PATH    = SS_DIR+'20240529_ZH_4b2nu_for2DAlphabet/2018/2DAlphabet_inputFiles'
     SIGS    = ['ZH']
-    FIT     =  '1d1C'
-    FITLIST = ['1d1C']
-    NOMTF   = 0.17
+    FIT     =  '0x0'  ## Default for Z to vv (MET): flat transfer factor
+    FITLIST = ['0x0']
+    NOMTF   = 0.36    ## Nominal fail-to-pass transfer factor (36%)
 if CAT == 'Zll' or CAT == 'Zmm' or CAT == 'Zee':
-    PATH    = HB_DIR+'2D_2LZ_SS020125/%s' % WP
+    PATH    = HB_DIR+'2D_Alphabet_root_052424/%s' % WP
     CATL    = 'Zll'
     SIGS    = ['ZH']
     FIT     =  '0x0'  ## Default for Z to ll: flat transfer factor
     FITLIST = ['0x0']
     NOMTF   = 0.18    ## Nominal fail-to-pass transfer factor (18%)
-if CAT == 'LepHi' or CAT == 'XXHi':  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
-    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT+'/2025_03_06_mAa'
-    SIGS    = ['WH','ttH','ZH']
-    FIT     =  '1d1C'
-    FITLIST = ['1d1C']
-    NOMTF   = 0.11
-if CAT == 'XXLo':  ## WlvLo + ttblv + ZvvLo
-    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT+'/2025_03_06_mAa'
-    #SIGS    = ['WH','ttH','ZH']
-    SIGS    = ['WH','ttH']
-    FIT     =  '1x1C'
-    FITLIST = ['1x1C']
-    NOMTF   = 0.11
-if CAT == 'XX':  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
-    PATH    = AB_DIR+'HtoAA_2DAlphabet_merge_inputs_'+CAT+'/2025_02_16_CAT34_mH_mH34'
-    SIGS    = ['WH','ttH','ZH']
-    FIT     =  '1d1C'
-    FITLIST = ['1d1C']
-    NOMTF   = 0.11
 
 
 '''--------------------------Helper functions---------------------------'''
@@ -160,7 +134,7 @@ def _select_signal(row, args):
 
 def _load_rpf(poly_order):
     twoD_for_rpf = TwoDAlphabet('fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR),
-                                '%s_Htoaato4b.json' % CATL, loadPrevious=True,
+                                '%s_Htoaato4b_sys.json' % CATL, loadPrevious=True,
                                 findreplace={'path':PATH, 'SIGNAME':_sig_names(),
                                              'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
     params_to_set = twoD_for_rpf.GetParamsOnMatch('rpf.*'+poly_order, 'mA_all_area', 'b')
@@ -268,9 +242,11 @@ def test_make(SRorCR):
     # in this case a specific signal model (production mode and "a" boson mass)
     # 'SIGNAME' also gets used as the $process in _batch_replace
     twoD = TwoDAlphabet('fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR),
-                        '%s_Htoaato4b.json' % CATL, loadPrevious=False, verbose=VERBOSE,
+                        '%s_Htoaato4b_sys.json' % CATL, loadPrevious=False, verbose=VERBOSE,
                         findreplace={'path':PATH, 'SIGNAME':_sig_names(),
-                                     'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
+                                     'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP),
+                                     'HISTUp':'$process_%s_%s_$region_$systUp' % (MASSH, WP),
+                                     'HISTDown':'$process_%s_%s_$region_$systDown' % (MASSH, WP)} )
     if VERBOSE: print('Completed first TwoDAlphabet with loadPrevious=False')
     # Initial "QCD" template simply equals data - all MC backgrounds
     # Is this really what we want for the "Pass" region as well? - AWB 2024.05.21
@@ -295,7 +271,7 @@ def test_make(SRorCR):
         # parameters in the fit. Bins <= 0 are forced to 1e-9 ("forcePositive" in TwoDAlphabet/alphawrap.py).
         # If bin and at least 7 of 8 "neighbors" are 0, bin value is fixed to constant 0.
         # Otherwise set to max(bin value, 5) with pre-fit uncertainty of 1e-6 to 1e6. Revisit? - AWB 2024.05.21
-        fail_name = 'Background_'+ CAT + "_" + fl
+        fail_name = 'Background_'+fl
         qcd_f = BinnedDistribution(
                     fail_name, qcd_hists[fl],
                     binning_f, constant=False,
@@ -557,6 +533,7 @@ def test_Impacts(SRorCR, massA):
         extra='-t 1 --toysFile %s' % toy_file_path.split('/')[-1]
     )
 
+
 def test_generate_for_SR(massA):
     '''NOTE: This is an expert-level manipulation that requires understanding the underlying Combine
     commands. Use and change it only if you understand what each step is doing.
@@ -631,9 +608,9 @@ if __name__ == '__main__':
     test_plot('SR')         ## Plot data vs. prediction, pre-fit and post-fit
     test_limit('SR')        ## Compute expected asymptotic limits
     test_GoF('SR')          ## Perform goodness-of-fit (GoF) test with toys
-    # midMA = MASSESA[math.floor(len(MASSESA) / 2)]
+    midMA = MASSESA[math.floor(len(MASSESA) / 2)]
     # test_SigInj('SR', midMA)       ## Presumably performs some signal injection test (?)
-    # test_Impacts('SR', midMA)      ## Test impact of systematic uncertainties (?)
+    test_Impacts('SR', midMA)      ## Test impact of systematic uncertainties (?)
     # # test_generate_for_SR()  ## Absolutely no idea (???)
     # ## If using condor, run after condor jobs finish
     test_GoF_plot('SR')     ## Plot results of GoF tests
