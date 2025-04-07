@@ -1,0 +1,72 @@
+{
+  "NAME": "VBFjjLo_Htoaato4b",
+    "PROCESSES": {
+	"data_obs": {
+	    "SYSTEMATICS":[],
+	    "SCALE": 1.0,
+	    "COLOR": 1,
+	    "TYPE": "DATA",
+	    "ALIAS": "VBFjjLo_Xto4bv2_Data_2018",
+	    "TITLE": "Data",
+	    "LOC": "path/FILE:HIST"
+	},
+	"SIGNAME": {
+            "SYSTEMATICS":["lumi"],
+	    "SCALE": 1.0,
+	    "COLOR": 1,
+	    "TYPE": "SIGNAL",
+	    "TITLE": "H to aa to 4b, bm_{a} = XX (GeV)",
+	    "LOC":"path/FILE:HIST"
+	}
+    },    
+    "REGIONS": {
+	"Pass": {
+	    "PROCESSES": ["SIGNAME"],
+	    "BINNING": "default"
+	},
+	"Fail": {
+	    "PROCESSES": ["SIGNAME"],
+	    "BINNING": "default"
+	}
+    },
+    "GLOBAL": {
+	"FILE": "$process.root"
+    },
+    
+  "BINNING": {
+      "default": {
+	  "X": {
+              "NAME": "mH",
+              "TITLE": "m_{H} (GeV)",
+              "MIN": 60,
+              "MAX": 220,
+              "NBINS": 16,
+              "SIGSTART": 100,
+              "SIGEND": 150
+	  },
+	  "Y": {
+              "NAME": "mA",
+              "TITLE": "m_{a} (GeV)",
+              "MIN": 10,
+              "MAX": 62,
+              "NBINS": 13
+	  }
+    }
+  },    
+    "SYSTEMATICS": {
+	"lumi": {
+	    "CODE": 0,
+	    "VAL": 1.018
+	}
+    },
+    
+    "OPTIONS": {
+	"overwrite": true,
+	"blindedPlots": ["Pass"],
+	"blindedFit": ["Pass"],
+	"plotPrefitSigInFitB": true,
+	"plotUncerts": true,
+	"plotTitles": false,
+	"year": 2018
+    }
+}

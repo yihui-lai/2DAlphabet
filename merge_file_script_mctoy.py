@@ -27,23 +27,30 @@ DATE     = '2025_04_04_mA'+ MA_reg
 # CAT_INS = ['WlvHi', 'ttbblv', 'Zll']
 
 # Comment out category as needed
-CAT_OUT = 'XXHi'
-CAT_OUT = 'XXLo'
+#CAT_OUT = 'XXHi'
+#CAT_OUT = 'XXLo'
+CAT_OUT = 'gg0lIncl'
+
+if CAT_OUT == 'gg0lIncl':
+    MASSESH  = ['pnet_vs_massA34a']
+    MA_reg = '34a'
+    WP_CUTS  = ['WP40']
+
 #CAT_OUT = 'XX'
 #CAT_OUT = 'Zll'
-basepath="/afs/cern.ch/work/y/yilai/Haa4b/datacards/CMSSW_11_3_4/src/Leptonic_raw_"
+basepath="./raw_inputs/"
 if CAT_OUT == 'XXHi':
   CAT_INS = ['WlvHi', 'ttbblv', 'ttbll', 'Zll'] #, 'ZvvHi']
   CATS_IN = {}
   for cat in CAT_INS:
       CATS_IN[cat] = {}
-  CATS_IN['WlvHi']['dir']   = basepath+'1L_030625_mA'+MA_reg+'/'
+  CATS_IN['WlvHi']['dir']   = basepath+'2D_1L_030625_mA'+MA_reg+'/'
   CATS_IN['WlvHi']['sigs']  = ['WHtoaato4b']
-  CATS_IN['ttbblv']['dir']  = basepath+'1L_030625_mA'+MA_reg+'/'
+  CATS_IN['ttbblv']['dir']  = basepath+'2D_1L_030625_mA'+MA_reg+'/'
   CATS_IN['ttbblv']['sigs'] = ['ttHtoaato4b']
-  CATS_IN['ttbll']['dir']   = basepath+'2Ltt_030625_mA'+MA_reg+'/'
+  CATS_IN['ttbll']['dir']   = basepath+'2D_2Ltt_030625_mA'+MA_reg+'/'
   CATS_IN['ttbll']['sigs']  = ['ttHtoaato4b']
-  CATS_IN['Zll']['dir']     = basepath+'2LZ_030625_mA'+MA_reg+'/'
+  CATS_IN['Zll']['dir']     = basepath+'2D_2LZ_030625_mA'+MA_reg+'/'
   CATS_IN['Zll']['sigs']    = ['ZHtoaato4b']
   #CATS_IN['ZvvHi']['dir']   = '/eos/cms/store/user/ssawant/htoaa/analysis/20250305_Zvv_FullSyst/2018/2DAlphabet_inputFiles/ZvvHi/'
   #CATS_IN['ZvvHi']['sigs']  = ['ZHtoaato4b']
@@ -52,12 +59,19 @@ elif CAT_OUT == 'XXLo':
   CATS_IN = {}
   for cat in CAT_INS:
      CATS_IN[cat] = {}
-  CATS_IN['WlvLo']['dir']   = basepath+'1L_030625_mA'+MA_reg+'/'
+  CATS_IN['WlvLo']['dir']   = basepath+'2D_1L_030625_mA'+MA_reg+'/'
   CATS_IN['WlvLo']['sigs']  = ['WHtoaato4b']
-  CATS_IN['ttblv']['dir']  = basepath+'1L_030625_mA'+MA_reg+'/'
+  CATS_IN['ttblv']['dir']  = basepath+'2D_1L_030625_mA'+MA_reg+'/'
   CATS_IN['ttblv']['sigs'] = ['ttHtoaato4b']
   #CATS_IN['ZvvLo']['dir'] = '/eos/cms/store/user/ssawant/htoaa/analysis/20250305_Zvv_FullSyst/2018/2DAlphabet_inputFiles/ZvvLo/'
   #CATS_IN['ZvvLo']['sigs']  = ['ZHtoaato4b']
+elif CAT_OUT == 'gg0lIncl':
+  CAT_INS = ['gg0lIncl']
+  CATS_IN = {}
+  for cat in CAT_INS:
+     CATS_IN[cat] = {}
+  CATS_IN['gg0lIncl']['dir']   = basepath+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/'
+  CATS_IN['gg0lIncl']['sigs']  = ['WHtoaato4b', 'ZHtoaato4b', 'ttHtoaato4b', 'VBFHtoaato4b', 'ggHtoaato4b']
 elif CAT_OUT == 'Zll':
   CAT_INS = ['Zll'] #, 'ZvvHi']
   CATS_IN = {}
@@ -111,7 +125,7 @@ def main():
                 samps.append(sig+'_mA_'+mA)
         for samp in samps:
             for wp in WP_CUTS:
-                if 'yilai' in CATS_IN[cat]['dir']:
+                if 'XXHi' in CAT_OUT or 'XXLo' in CAT_OUT:
                     in_file_str = CATS_IN[cat]['dir']+'%s/%s_%s_%s.root' % (wp, cat, samp, YEAR)
                 else:
                     in_file_str = CATS_IN[cat]['dir']+'%s_%s_%s.root' % (cat, samp, YEAR)
@@ -134,6 +148,7 @@ def main():
 
                         h_out_name = '%s_%s_%s_%s_%s_%s_Nom' % (CAT_OUT, samp, YEAR, mH, wp, pf)
                         if not h_out_name in h_outs.keys():
+                            print(h_out_name)
                             h_outs[h_out_name] = h_in.Clone(h_out_name)
                             if VERBOSE: print('Created %s' % h_out_name)
                             if VERBOSE: print('  * Integral = %.1f' % h_outs[h_out_name].Integral())

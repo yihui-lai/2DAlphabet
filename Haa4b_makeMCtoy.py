@@ -4,62 +4,101 @@ import numpy as np
 
 ROOT.gROOT.SetBatch(True)
 
-base_pth="/afs/cern.ch/work/y/yilai/Haa4b/datacards/haa4b_boosted/input/"
+base_pth=None
 category = "VBF_Hi"
-category = "Leptonic_Hi"
+#category = "VBF_Lo"
+#category = "gg0lIncl"
+#category = "Leptonic_Hi"
 #category = "Leptonic_Lo"
 
+if category == "Leptonic_Hi" or category == "Leptonic_Lo" or category == "gg0lIncl":
+    base_pth="./raw_inputs/"
+elif category == "VBF_Hi" or category == "VBF_Lo":
+    base_pth="./plots/"
+
 if category == "VBF_Hi":
-    output_name = "VBF_mctoy/fits_VBFjjHi_Xto4bv2_Htoaato4b_mH_pnet_mA_15to55_WP40_2018/base.root"
-    os.system("mkdir -p VBF_mctoy/fits_VBFjjHi_Xto4bv2_Htoaato4b_mH_pnet_mA_15to55_WP40_2018/")
-    input_ws = ROOT.TFile.Open("VBF/fits_VBFjjHi_Xto4bv2_Htoaato4b_mH_pnet_mA_15to55_WP40_2018/base.root")
+    output_hist_name = "plots/2DAlphabetfiles_VBF_inputs/VBFHi_Xto4bv2"
+    input_ws = ROOT.TFile.Open("raw_inputs/taggerv2_wp40Andwp60/fits_VBFjjHi_Xto4bv2_Htoaato4b_mH_pnet_mA_15to55_WP40_2018/base.root")
     rafile_XXHi=[
-        'VBF_raw/VBFjjHi_Xto4bv2_Data_2018.root:VBFjjHi_Xto4bv2_Data_2018_pnet_WP40_Pass_Nom:VBFjjHi_Xto4bv2_Data_2018_pnet_WP40_Fail_Nom',
+        'plots/2DAlphabetfiles_VBF_inputs/VBFHi_Xto4bv2/VBFjjHi_Xto4bv2_MC_2018.root:VBFjjHi_Xto4bv2_Data_2018_pnet_WP40_Pass_Nom:VBFjjHi_Xto4bv2_Data_2018_pnet_WP40_Fail_Nom',
     ]
     rafile = rafile_XXHi
+    outprocess = "VBFjjHi_Xto4bv2_BKGsmooth1_2018_pnet_WP40_"
 elif category == "VBF_Lo":
-    output_name = "VBF_mctoy/fits_VBFjjLo_Xto4bv2_Htoaato4b_mH_pnet_mA_15to55_WP40_2018/base.root"
-    os.system("mkdir -p VBF_mctoy/fits_VBFjjLo_Xto4bv2_Htoaato4b_mH_pnet_mA_15to55_WP40_2018/")
-    input_ws = ROOT.TFile.Open("VBF/fits_VBFjjLo_Xto4bv2_Htoaato4b_mH_pnet_mA_15to55_WP40_2018/base.root")
+    output_hist_name = "plots/2DAlphabetfiles_VBF_inputs/VBFLo_Xto4bv2"
+    input_ws = ROOT.TFile.Open("raw_inputs/taggerv2_wp40Andwp60/fits_VBFjjLo_Xto4bv2_Htoaato4b_mH_pnet_mA_15to55_WP40_2018/base.root")
     rafile_XXLo=[
-        'VBF_raw/VBFjjLo_Xto4bv2_Data_2018.root:VBFjjLo_Xto4bv2_Data_2018_pnet_WP40_Pass_Nom:VBFjjLo_Xto4bv2_Data_2018_pnet_WP40_Fail_Nom',
+        'plots/2DAlphabetfiles_VBF_inputs/VBFLo_Xto4bv2/VBFjjLo_Xto4bv2_MC_2018.root:VBFjjLo_Xto4bv2_Data_2018_pnet_WP40_Pass_Nom:VBFjjLo_Xto4bv2_Data_2018_pnet_WP40_Fail_Nom',
     ]
     rafile = rafile_XXLo
+    outprocess = "VBFjjLo_Xto4bv2_BKGsmooth1_2018_pnet_WP40_"
+elif category == "gg0lIncl":
+    output_hist_name = "plots/HtoAA_2DAlphabet_merge_inputs_gg0lIncl/2025_04_04_mAa/"
+    input_ws = ROOT.TFile.Open("raw_inputs/20250403_Pseudodata/fits_gg0lIncl_Htoaato4b_mH_pnet_vs_massA34a_mA_15to55_WP40_2018/base.root")
+    rafile_bkg=[
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_QCD_BGen_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_QCD_Incl_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_QCD_bEnr_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_ST_s_0l_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_ST_s_1l_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_STbar_tW_12l_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_STbar_tW_Incl_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_STbar_t_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_STop_tW_12l_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_STop_tW_Incl_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_STop_t_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_TT0l_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_TT1l_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_TT2l_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_WWW_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_WWZ_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_WW_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_WZZ_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_WZ_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_Wlv_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_Wqq_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_ZZZ_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_ZZ_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_Zll_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_Zqq_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_Zvv_2018.root',
+        base_pth+'/20250403_Pseudodata/2DAlphabet_inputFiles_pseudodata_0/gg0lIncl/gg0lIncl_ggH_2018.root',
+    ]
+    rafile = rafile_bkg
+    outprocess = "gg0lIncl_BKGsmooth1_2018_pnet_vs_massA34a_WP40_"
 elif category == "Leptonic_Hi":
     output_hist_name = "plots/HtoAA_2DAlphabet_merge_inputs_XXHi/2025_04_04_mAa"
-    os.system("mkdir -p "+base_pth+"Leptonic_mctoy/fits_XXHi_Htoaato4b_mH_pnet_mA_15to55_WP60_2018/")
-    input_ws = ROOT.TFile.Open(base_pth+"Leptonic/fits_XXHi_Htoaato4b_mH_pnet_mA_15to55_WP60_2018/base.root")
+    input_ws = ROOT.TFile.Open(base_pth+"/Leptonic_2D_Limits_040125/fits_XXHi_Htoaato4b_mH_pnet_mA_15to55_WP60_2018/base.root")
     rafile_XXHi=[
-        base_pth+'Leptonic_raw_1L_030625_mAa/WP60/WlvHi_Data_2018.root',
-        base_pth+'Leptonic_raw_1L_030625_mAa/WP60/ttbblv_Data_2018.root',
-        base_pth+'Leptonic_raw_2LZ_030625_mAa/WP60/Zll_Data_2018.root',
-        base_pth+'Leptonic_raw_2Ltt_030625_mAa/WP60/ttbll_Data_2018.root',
+        base_pth+'2D_1L_030625_mAa/WP60/WlvHi_Data_2018.root',
+        base_pth+'2D_1L_030625_mAa/WP60/ttbblv_Data_2018.root',
+        base_pth+'2D_2LZ_030625_mAa/WP60/Zll_Data_2018.root',
+        base_pth+'2D_2Ltt_030625_mAa/WP60/ttbll_Data_2018.root',
     ]
     rafile_XXHi_bkg=[
-        base_pth+'Leptonic_raw_1L_030625_mAa/WP60/WlvHi_TT1l_2018.root',
-        base_pth+'Leptonic_raw_1L_030625_mAa/WP60/WlvHi_Wlv_2018.root',
-        base_pth+'Leptonic_raw_1L_030625_mAa/WP60/ttbblv_TT1l_2018.root',
-        base_pth+'Leptonic_raw_1L_030625_mAa/WP60/ttbblv_Wlv_2018.root',
-        base_pth+'Leptonic_raw_2LZ_030625_mAa/WP60/Zll_TT2l_2018.root',
-        base_pth+'Leptonic_raw_2LZ_030625_mAa/WP60/Zll_ZZ_2018.root',
-        base_pth+'Leptonic_raw_2LZ_030625_mAa/WP60/Zll_Zll_2018.root',
-        base_pth+'Leptonic_raw_2Ltt_030625_mAa/WP60/ttbll_TT2l_2018.root',
+        base_pth+'2D_1L_030625_mAa/WP60/WlvHi_TT1l_2018.root',
+        base_pth+'2D_1L_030625_mAa/WP60/WlvHi_Wlv_2018.root',
+        base_pth+'2D_1L_030625_mAa/WP60/ttbblv_TT1l_2018.root',
+        base_pth+'2D_1L_030625_mAa/WP60/ttbblv_Wlv_2018.root',
+        base_pth+'2D_2LZ_030625_mAa/WP60/Zll_TT2l_2018.root',
+        base_pth+'2D_2LZ_030625_mAa/WP60/Zll_ZZ_2018.root',
+        base_pth+'2D_2LZ_030625_mAa/WP60/Zll_Zll_2018.root',
+        base_pth+'2D_2Ltt_030625_mAa/WP60/ttbll_TT2l_2018.root',
     ]
     rafile = rafile_XXHi_bkg
     outprocess = "XXHi_BKGsmooth1_2018_pnet_WP60_"
 elif category == "Leptonic_Lo":
     output_hist_name = "plots/HtoAA_2DAlphabet_merge_inputs_XXLo/2025_04_04_mAa"
-    os.system("mkdir -p "+base_pth+"Leptonic_mctoy/fits_XXHi_Htoaato4b_mH_pnet_mA_15to55_WP60_2018/")
-    input_ws = ROOT.TFile.Open(base_pth+"Leptonic/fits_XXHi_Htoaato4b_mH_pnet_mA_15to55_WP60_2018/base.root")
+    input_ws = ROOT.TFile.Open(base_pth+"/Leptonic_2D_Limits_040125/fits_XXLo_Htoaato4b_mH_pnet_mA_15to55_WP60_2018/base.root")
     rafile_XXLo=[
-      base_pth+'Leptonic_raw_1L_030625_mAa/WP60/WlvLo_Data_2018.root',
-      base_pth+'Leptonic_raw_1L_030625_mAa/WP60/ttblv_Data_2018.root',
+      base_pth+'2D_1L_030625_mAa/WP60/WlvLo_Data_2018.root',
+      base_pth+'2D_1L_030625_mAa/WP60/ttblv_Data_2018.root',
     ]
     rafile_XXLo_bkg=[
-      base_pth+'Leptonic_raw_1L_030625_mAa/WP60/WlvLo_TT1l_2018.root',
-      base_pth+'Leptonic_raw_1L_030625_mAa/WP60/WlvLo_Wlv_2018.root',
-      base_pth+'Leptonic_raw_1L_030625_mAa/WP60/ttblv_TT1l_2018.root',
-      base_pth+'Leptonic_raw_1L_030625_mAa/WP60/ttblv_Wlv_2018.root',
+      base_pth+'2D_1L_030625_mAa/WP60/WlvLo_TT1l_2018.root',
+      base_pth+'2D_1L_030625_mAa/WP60/WlvLo_Wlv_2018.root',
+      base_pth+'2D_1L_030625_mAa/WP60/ttblv_TT1l_2018.root',
+      base_pth+'2D_1L_030625_mAa/WP60/ttblv_Wlv_2018.root',
     ]
     rafile = rafile_XXLo_bkg
     outprocess = "XXLo_BKGsmooth1_2018_pnet_WP60_"
@@ -135,6 +174,7 @@ def compare_2D_histograms(data_obs1, data_obs2, mH_default, mA_default, name):
         hist_ratio = hist_data_obs2.Clone("hist_ratio")
         if ismooth!=0:
             hist_ratio.Smooth(ismooth)
+        hist_ratio.Divide(hist_data_obs1)
         hist_ratio.SetTitle("Data/MC Ratio (data_obs1/data_obs2)")
         hist_ratio.GetXaxis().SetTitle("mH")
         hist_ratio.GetYaxis().SetTitle("mA")
@@ -163,6 +203,9 @@ for raf in rafile:
         pass_name = f"{name}_pnet_WP60_Pass_Nom"
         fail_name = f"{name}_pnet_WP60_Fail_Nom"
         filepath = raf
+        if category == "gg0lIncl":
+            pass_name = f"{name}_pnet_vs_massA34d_WP40_Pass_Nom"
+            fail_name = f"{name}_pnet_vs_massA34d_WP40_Fail_Nom"
     file_raw_list[raf] = ROOT.TFile.Open(filepath)
     hist2_pass = file_raw_list[raf].Get(pass_name)
     hist2_fail = file_raw_list[raf].Get(fail_name)
@@ -259,7 +302,7 @@ for IsPass in ["Pass", "Fail"]:
             mH_val = var_set.getRealValue(f"mH_{MHRegion}_default")  # Extract mH value
             mA_val = var_set.getRealValue("mA_default")  # Extract mA value
             Total_events2 +=weight
-            if weight<=0:
+            if weight<0:
                 print( f"Bin {i}, (mH = {mH_val}, mA = {mA_val}): {weight}")
                 if f"{IsPass}"=="Fail":
                     exit()
@@ -268,7 +311,7 @@ for IsPass in ["Pass", "Fail"]:
             print("----- Something is wrong! -----")
             #exit()
         if f"{IsPass}_{MHRegion}" !="Pass_SIG":
-            compare_2D_histograms(data_obs1, data_obs2, mH_default, mA_default, f"{IsPass}_{MHRegion}")
+            compare_2D_histograms(data_obs1, data_obs2, mH_default, mA_default, f"{category}_{IsPass}_{MHRegion}")
         del hist_rebinned
 
 
@@ -302,7 +345,7 @@ def toys_generator(hist1, hist2, ntoyes, output_filename):
 #BKGMCTotal_fail_Smooth1.Write()
 #output_file.Close()  # Close the file
 
-Ntoys=200
+Ntoys=50
 toys_generator(BKGMCTotal_pass_Smooth1, BKGMCTotal_fail_Smooth1, Ntoys, output_hist_name)
 
 import json
@@ -322,4 +365,24 @@ elif category == "Leptonic_Lo":
         data['PROCESSES']["data_obs"]['ALIAS'] = f"XXLo_BKGsmooth1_toy{i}_2018"
         with open(f'mctoysjson/XXLo_Htoaato4b_mctoy{i}.json', 'w') as f:
             json.dump(data, f, indent=4)
-
+elif category == "gg0lIncl":
+    for i in range(Ntoys):
+        with open('gg0lIncl_Htoaato4b.json', 'r') as f:
+            data = json.load(f)  # `data` is now a Python dictionary or list
+        data['PROCESSES']["data_obs"]['ALIAS'] = f"gg0lIncl_BKGsmooth1_toy{i}_2018"
+        with open(f'mctoysjson/gg0lIncl_Htoaato4b_mctoy{i}.json', 'w') as f:
+            json.dump(data, f, indent=4)
+elif category == "VBF_Hi":
+    for i in range(Ntoys):
+        with open('VBFjjHi_Htoaato4b.json', 'r') as f:
+            data = json.load(f)  # `data` is now a Python dictionary or list
+        data['PROCESSES']["data_obs"]['ALIAS'] = f"VBFjjHi_Xto4bv2_BKGsmooth1_toy{i}_2018"
+        with open(f'mctoysjson/VBFjjHi_Xto4bv2_Htoaato4b_mctoy{i}.json', 'w') as f:
+            json.dump(data, f, indent=4)
+elif category == "VBF_Lo":
+    for i in range(Ntoys):
+        with open('VBFjjLo_Htoaato4b.json', 'r') as f:
+            data = json.load(f)  # `data` is now a Python dictionary or list
+        data['PROCESSES']["data_obs"]['ALIAS'] = f"VBFjjLo_Xto4bv2_BKGsmooth1_toy{i}_2018"
+        with open(f'mctoysjson/VBFjjLo_Xto4bv2_Htoaato4b_mctoy{i}.json', 'w') as f:
+            json.dump(data, f, indent=4)

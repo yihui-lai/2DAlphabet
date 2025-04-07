@@ -17,7 +17,13 @@ import math
 VERBOSE = True
 NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
 CAT     = 'XXHi'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
-CAT     = 'XXLo'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
+#CAT     = 'XXLo'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
+#CAT     = 'gg0lIncl'
+#CAT     = 'VBFjjLo_Xto4bv2'
+CAT     = 'VBFjjHi_Xto4bv2'
+
+
+
 CATL    = CAT       ## Selection category with lepton "l" instead of mu "m" or ele "e"
 MASSH   = 'pnet'    ## Higgs mass regression (mass, msoft, pnet)
 MASSESA = ['15','30','55']  ## Masses of "a" boson
@@ -25,7 +31,6 @@ MASSA   = ('%sto%s' % (MASSESA[0], MASSESA[-1]) if len(MASSESA) > 1 else MASSESA
 WP      = 'WP60'    ## Hto4b efficiency working point
 YEAR    = '2018'    ## Data year
 UseMCToy = True
-#UseMCToy = False
 toys=0
 ## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
 ## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
@@ -39,17 +44,33 @@ YH_DIR = '/afs/cern.ch/work/y/yilai/Haa4b/datacards/CMSSW_11_3_4/src/2DAlphabet/
 
 if CAT == 'gg0l' or CAT == 'gg0lIncl' or CAT == 'gg0lHi' or CAT == 'gg0lLo':
     # PATH    = SS_DIR+'20240530_ggH0l_for2DAlphabet/2018/2DAlphabet_inputFiles'
-    PATH    = SS_DIR+'20240627_gg0l_1/2018/2DAlphabet_inputFiles/'+CAT
-    SIGS    = ['ggH']
+    PATH    = 'plots/HtoAA_2DAlphabet_merge_inputs_gg0lIncl/2025_04_04_mAa/'
+    SIGS    = ['ggH', 'WH','ttH','ZH', 'VBFH']
     FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
     FITLIST = ['2d2C']
     NOMTF   = 0.1
+    MASSH   = 'pnet_vs_massA34a'    ## Higgs mass regression (mass, msoft, pnet)
+    WP      = 'WP40'    ## Hto4b efficiency working point
 if CAT == 'VBFjj':
     PATH    = MD_DIR+'forAndrew/2DAlphabetfiles'
     SIGS    = ['VBFH']
     FIT     =  '2d2C'
     FITLIST = ['2d2C']
     NOMTF   = 0.10    ## Nominal fail-to-pass transfer factor (10%)
+if CAT == 'VBFjjLo_Xto4bv2':
+    PATH    = 'plots/2DAlphabetfiles_VBF_inputs/VBFLo_Xto4bv2/'
+    SIGS    = ['VBFH']
+    FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
+    FITLIST = ['2d2C']
+    WP      = 'WP40'    ## Hto4b efficiency working point
+    NOMTF   = (0.1 if WP == 'WP40' else 0.6)
+if CAT == 'VBFjjHi_Xto4bv2':
+    PATH    = 'plots/2DAlphabetfiles_VBF_inputs/VBFHi_Xto4bv2/'
+    SIGS    = ['VBFH']
+    FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
+    FITLIST = ['2d2C']
+    WP      = 'WP40'    ## Hto4b efficiency working point
+    NOMTF   = (0.1 if WP == 'WP40' else 0.6)
 if CAT == 'Vjj':
     # PATH    = SS_DIR+'20240530_VHHadronicMode_for2DAlphabet_1/2018/2DAlphabet_inputFiles'
     PATH    = SS_DIR+'20240626_Vjj/2018/2DAlphabet_inputFiles/Vjj'
@@ -631,8 +652,9 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         print("First argument:", sys.argv[1])  # First passed argument
     else:
-        print("toy ?")
-        exit()
+        if UseMCToy:
+            print("toy ?")
+            exit()
     toys = int(sys.argv[1])
 
     test_make('SR')         ## Generate histograms Generic2D objects, including transfer functions
