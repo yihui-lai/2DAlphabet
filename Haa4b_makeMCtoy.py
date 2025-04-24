@@ -10,8 +10,10 @@ category = "VBF_Hi"
 #category = "gg0lIncl"
 #category = "Leptonic_Hi"
 #category = "Leptonic_Lo"
+category = "gg0lHi"
+#category = "gg0lLo"
 
-if category == "Leptonic_Hi" or category == "Leptonic_Lo" or category == "gg0lIncl":
+if category == "Leptonic_Hi" or category == "Leptonic_Lo" or category == "gg0lIncl" or category == "gg0lHi" or category == "gg0lLo":
     base_pth="./raw_inputs/"
 elif category == "VBF_Hi" or category == "VBF_Lo":
     base_pth="./plots/"
@@ -66,6 +68,44 @@ elif category == "gg0lIncl":
     ]
     rafile = rafile_bkg
     outprocess = "gg0lIncl_BKGsmooth1_2018_pnet_vs_massA34a_WP40_"
+elif category == "gg0lHi":
+    output_hist_name = "plots/HtoAA_2DAlphabet_merge_inputs_gg0lHi/2025_04_04_mAa/"
+    input_ws = ROOT.TFile.Open("raw_inputs/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_Data_2018.root")
+    outprocess = "gg0lHi_BKGsmooth1_2018_pnet_vs_massA34a_WP40_"
+    rafile_bkg=[
+        #base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_MC_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_QCD_BGen_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_QCD_Incl_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_QCD_bEnr_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_ST_s_0l_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_ST_s_1l_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_STbar_tW_12l_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_STbar_tW_Incl_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_STbar_t_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_STop_tW_12l_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_STop_tW_Incl_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_STop_t_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_TT0l_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_TT1l_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_TT2l_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_WWW_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_WWZ_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_WW_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_WZZ_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_WZ_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_Wlv_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_Wqq_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_ZZZ_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_ZZ_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_Zll_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_Zqq_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_Zvv_2018.root',
+        base_pth+'/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_ggH_2018.root',
+    ]
+    rafile_bkg=[
+        "raw_inputs/ggH2DAlphabet_inputFiles_pseudodata/gg0lHi/gg0lHi_Data_2018.root"
+    ]
+    rafile = rafile_bkg
 elif category == "Leptonic_Hi":
     output_hist_name = "plots/HtoAA_2DAlphabet_merge_inputs_XXHi/2025_04_04_mAa"
     input_ws = ROOT.TFile.Open(base_pth+"/Leptonic_2D_Limits_040125/fits_XXHi_Htoaato4b_mH_pnet_mA_15to55_WP60_2018/base.root")
@@ -203,7 +243,7 @@ for raf in rafile:
         pass_name = f"{name}_pnet_WP60_Pass_Nom"
         fail_name = f"{name}_pnet_WP60_Fail_Nom"
         filepath = raf
-        if category == "gg0lIncl":
+        if "gg0l" in category:
             pass_name = f"{name}_pnet_vs_massA34d_WP40_Pass_Nom"
             fail_name = f"{name}_pnet_vs_massA34d_WP40_Fail_Nom"
     file_raw_list[raf] = ROOT.TFile.Open(filepath)
@@ -244,76 +284,83 @@ for i in range(1, BKGMCTotal_pass_Smooth1.GetNbinsX() + 1):
 
 
 # take dataHIST from workspace
-w1 = input_ws.Get("w")
-Nevt_allregions={}
-for IsPass in ["Pass", "Fail"]:
-    Nevt_allregions[IsPass]=0
-    for MHRegion in ["LOW", "SIG", "HIGH"]:
-        print(f"----> {IsPass}_{MHRegion}")
-        data_obs1 = w1.data(f"data_obs_{IsPass}_{MHRegion}")
-        #print("Data Events: ", data_obs1.numEntries())
-        mH_default = w1.var(f"mH_{MHRegion}_default")
-        mA_default = w1.var("mA_default")
-        Total_events1=0
-        for i in range(data_obs1.numEntries()):
-            var_set = data_obs1.get(i)
-            weight = data_obs1.weight()
-            mH_val = var_set.getRealValue(f"mH_{MHRegion}_default")  # Extract mH value
-            mA_val = var_set.getRealValue("mA_default")  # Extract mA value
-            Total_events1 += weight
-            #print( f"Bin {i}, (mH = {mH_val}, mA = {mA_val}): {weight}")
-        Nevt_allregions[IsPass]+=Total_events1
-        #print("total: ", Total_events1)
-        nbins_mH = mH_default.getBins()  # Default number of bins in mH
-        nbins_mA = mA_default.getBins()  # Default number of bins in mA
-        low_mH = mH_default.getMin()
-        high_mH = mH_default.getMax()
-        low_mA = mA_default.getMin()
-        high_mA = mA_default.getMax()
-        hist_rebinned = ROOT.TH2F("hist_rebinned", "Rebinned Histogram",
-                                  nbins_mH, low_mH, high_mH,
-                                  nbins_mA, low_mA, high_mA)
-        
-        BKGMCTotal_tofill = BKGMCTotal_pass_Smooth1
-        if IsPass=="Fail":
-            BKGMCTotal_tofill = BKGMCTotal_fail_Smooth1
-        for i in range(1, BKGMCTotal_tofill.GetNbinsX() + 1):
-            for j in range(1, BKGMCTotal_tofill.GetNbinsY() + 1):
-                x_center = BKGMCTotal_tofill.GetXaxis().GetBinCenter(i)
-                y_center = BKGMCTotal_tofill.GetYaxis().GetBinCenter(j)
-                content = BKGMCTotal_tofill.GetBinContent(i, j)
-                # Find the new bin index and fill the rebinned histogram
-                binx = hist_rebinned.GetXaxis().FindBin(x_center)
-                biny = hist_rebinned.GetYaxis().FindBin(y_center)
-                content_org = hist_rebinned.GetBinContent(binx, biny)
-                #print(x_center, y_center, binx, biny)
-                hist_rebinned.SetBinContent(binx, biny, content + content_org)
-                hist_rebinned.SetBinError(binx, biny, np.sqrt(content + content_org))
-        #hist_rebinned.Scale(Total_events1*1.0/hist_rebinned.Integral())
-        print("Remake data_obs")
-        data_obs2 = ROOT.RooDataHist(f"data_obs_mc_{IsPass}_{MHRegion}", "Binned dataset from histogram",
-                                     ROOT.RooArgList(mH_default, mA_default),
-                                     hist_rebinned)
-        w1.Import(data_obs2)  # Import data_obs2 into the workspace w1
-        Total_events2=0
-        for i in range(data_obs2.numEntries()):
-            var_set = data_obs2.get(i)
-            weight = data_obs2.weight()
-            mH_val = var_set.getRealValue(f"mH_{MHRegion}_default")  # Extract mH value
-            mA_val = var_set.getRealValue("mA_default")  # Extract mA value
-            Total_events2 +=weight
-            if weight<0:
-                print( f"Bin {i}, (mH = {mH_val}, mA = {mA_val}): {weight}")
-                if f"{IsPass}"=="Fail":
-                    exit()
-        print("total ws, raw hist: ", Total_events2, Total_events1)
-        if(abs(Total_events1-Total_events2)/Total_events1 > 0.2) :
-            print("----- Something is wrong! -----")
-            #exit()
-        if f"{IsPass}_{MHRegion}" !="Pass_SIG":
-            compare_2D_histograms(data_obs1, data_obs2, mH_default, mA_default, f"{category}_{IsPass}_{MHRegion}")
-        del hist_rebinned
-
+dataHIST_from_workspace=False
+if dataHIST_from_workspace:
+    w1 = input_ws.Get("w")
+    Nevt_allregions={}
+    for IsPass in ["Pass", "Fail"]:
+        Nevt_allregions[IsPass]=0
+        for MHRegion in ["LOW", "SIG", "HIGH"]:
+            print(f"----> {IsPass}_{MHRegion}")
+            data_obs1 = w1.data(f"data_obs_{IsPass}_{MHRegion}")
+            #print("Data Events: ", data_obs1.numEntries())
+            mH_default = w1.var(f"mH_{MHRegion}_default")
+            mA_default = w1.var("mA_default")
+            Total_events1=0
+            for i in range(data_obs1.numEntries()):
+                var_set = data_obs1.get(i)
+                weight = data_obs1.weight()
+                mH_val = var_set.getRealValue(f"mH_{MHRegion}_default")  # Extract mH value
+                mA_val = var_set.getRealValue("mA_default")  # Extract mA value
+                Total_events1 += weight
+                #print( f"Bin {i}, (mH = {mH_val}, mA = {mA_val}): {weight}")
+            Nevt_allregions[IsPass]+=Total_events1
+            #print("total: ", Total_events1)
+            nbins_mH = mH_default.getBins()  # Default number of bins in mH
+            nbins_mA = mA_default.getBins()  # Default number of bins in mA
+            low_mH = mH_default.getMin()
+            high_mH = mH_default.getMax()
+            low_mA = mA_default.getMin()
+            high_mA = mA_default.getMax()
+            hist_rebinned = ROOT.TH2F("hist_rebinned", "Rebinned Histogram",
+                                      nbins_mH, low_mH, high_mH,
+                                      nbins_mA, low_mA, high_mA)
+            
+            BKGMCTotal_tofill = BKGMCTotal_pass_Smooth1
+            if IsPass=="Fail":
+                BKGMCTotal_tofill = BKGMCTotal_fail_Smooth1
+            for i in range(1, BKGMCTotal_tofill.GetNbinsX() + 1):
+                for j in range(1, BKGMCTotal_tofill.GetNbinsY() + 1):
+                    x_center = BKGMCTotal_tofill.GetXaxis().GetBinCenter(i)
+                    y_center = BKGMCTotal_tofill.GetYaxis().GetBinCenter(j)
+                    content = BKGMCTotal_tofill.GetBinContent(i, j)
+                    # Find the new bin index and fill the rebinned histogram
+                    binx = hist_rebinned.GetXaxis().FindBin(x_center)
+                    biny = hist_rebinned.GetYaxis().FindBin(y_center)
+                    content_org = hist_rebinned.GetBinContent(binx, biny)
+                    #print(x_center, y_center, binx, biny)
+                    hist_rebinned.SetBinContent(binx, biny, content + content_org)
+                    hist_rebinned.SetBinError(binx, biny, np.sqrt(content + content_org))
+            #hist_rebinned.Scale(Total_events1*1.0/hist_rebinned.Integral())
+            print("Remake data_obs")
+            data_obs2 = ROOT.RooDataHist(f"data_obs_mc_{IsPass}_{MHRegion}", "Binned dataset from histogram",
+                                         ROOT.RooArgList(mH_default, mA_default),
+                                         hist_rebinned)
+            w1.Import(data_obs2)  # Import data_obs2 into the workspace w1
+            Total_events2=0
+            for i in range(data_obs2.numEntries()):
+                var_set = data_obs2.get(i)
+                weight = data_obs2.weight()
+                mH_val = var_set.getRealValue(f"mH_{MHRegion}_default")  # Extract mH value
+                mA_val = var_set.getRealValue("mA_default")  # Extract mA value
+                Total_events2 +=weight
+                if weight<0:
+                    print( f"Bin {i}, (mH = {mH_val}, mA = {mA_val}): {weight}")
+                    if f"{IsPass}"=="Fail":
+                        exit()
+            print("total ws, raw hist: ", Total_events2, Total_events1)
+            if(abs(Total_events1-Total_events2)/Total_events1 > 0.2) :
+                print("----- Something is wrong! -----")
+                #exit()
+            if f"{IsPass}_{MHRegion}" !="Pass_SIG":
+                compare_2D_histograms(data_obs1, data_obs2, mH_default, mA_default, f"{category}_{IsPass}_{MHRegion}")
+            del hist_rebinned
+else:
+    Nevt_allregions={}
+    data_pass = input_ws.Get(f"{category}_Data_2018_pnet_vs_massA34a_WP40_Pass_Nom")
+    data_fail = input_ws.Get(f"{category}_Data_2018_pnet_vs_massA34a_WP40_Fail_Nom")
+    Nevt_allregions["Pass"] = data_pass.Integral()
+    Nevt_allregions["Fail"] = data_fail.Integral()
 
 BKGMCTotal_pass_Smooth1.Scale( Nevt_allregions["Pass"]*1.0/BKGMCTotal_pass_Smooth1.Integral() )
 BKGMCTotal_fail_Smooth1.Scale( Nevt_allregions["Fail"]*1.0/BKGMCTotal_fail_Smooth1.Integral() )
@@ -371,6 +418,20 @@ elif category == "gg0lIncl":
             data = json.load(f)  # `data` is now a Python dictionary or list
         data['PROCESSES']["data_obs"]['ALIAS'] = f"gg0lIncl_BKGsmooth1_toy{i}_2018"
         with open(f'mctoysjson/gg0lIncl_Htoaato4b_mctoy{i}.json', 'w') as f:
+            json.dump(data, f, indent=4)
+elif category == "gg0lHi":
+    for i in range(Ntoys):
+        with open('gg0lHi_Htoaato4b.json', 'r') as f:
+            data = json.load(f)  # `data` is now a Python dictionary or list
+        data['PROCESSES']["data_obs"]['ALIAS'] = f"gg0lHi_BKGsmooth1_toy{i}_2018"
+        with open(f'mctoysjson/gg0lHi_Htoaato4b_mctoy{i}.json', 'w') as f:
+            json.dump(data, f, indent=4)
+elif category == "gg0lLo":
+    for i in range(Ntoys):
+        with open('gg0lLo_Htoaato4b.json', 'r') as f:
+            data = json.load(f)  # `data` is now a Python dictionary or list
+        data['PROCESSES']["data_obs"]['ALIAS'] = f"gg0lLo_BKGsmooth1_toy{i}_2018"
+        with open(f'mctoysjson/gg0lLo_Htoaato4b_mctoy{i}.json', 'w') as f:
             json.dump(data, f, indent=4)
 elif category == "VBF_Hi":
     for i in range(Ntoys):
