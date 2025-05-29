@@ -12,24 +12,24 @@ from TwoDAlphabet import plot
 from TwoDAlphabet.twoDalphabet import MakeCard, TwoDAlphabet
 from TwoDAlphabet.alphawrap import BinnedDistribution, ParametricFunction
 from TwoDAlphabet.helpers import make_env_tarball
+from ROOT import RooRealVar, RooFormulaVar, RooArgList
 import os
 import sys
 import math
+import numpy as np
 
-VERBOSE = True
+VERBOSE = False
 NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
-#CAT     = 'XXHi'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
-#CAT     = 'XXLo'    ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
-#CAT     = 'gg0lIncl'
-#CAT     = 'VBFjjLo_Xto4bv2'
-#CAT     = 'VBFjjHi_Xto4bv2'
+#CAT     = 'gg0lHi' ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
 CAT = sys.argv[2]
 TOYSOURCE = str(sys.argv[3]) ## MC, Data
+SIGINJ = '' if len(sys.argv) < 5 else str(sys.argv[4])  ## mA_XX_sigBr_YY
+OUT_DIR = 'output'
+CARD_ONLY = True  ## Just generate cards, don't do any fits, plots, etc.
 
 CATL    = CAT       ## Selection category with lepton "l" instead of mu "m" or ele "e"
 MASSH   = 'pnet'    ## Higgs mass regression (mass, msoft, pnet)
 MASSESA = ['15','30','55']  ## Masses of "a" boson
-#MASSESA = ['30']  ## Masses of "a" boson
 MASSA   = '%sto%s' % (MASSESA[0], MASSESA[-1])
 WP      = 'WP40'    ## Hto4b efficiency working point
 YEAR    = '2018'    ## Data year
@@ -45,60 +45,31 @@ SS_DIR = '/eos/cms/store/user/ssawant/htoaa/analysis/'
 HB_DIR = '/afs/cern.ch/user/h/hboucham/public/'
 MD_DIR = '/afs/cern.ch/user/m/moanwar/public/'
 AB_DIR = '/afs/cern.ch/work/a/abrinke1/public/HiggsToAA/coffea/eventloop/plots/'
-#YH_DIR = '/afs/cern.ch/work/y/yilai/Haa4b/datacards/CMSSW_11_3_4/src/2DAlphabet/plots/'
-#YH_DIR = '/afs/cern.ch/user/h/hboucham/work/H4B/CMSSW_11_3_4/src/2DAlphabet/plots/'
 
 
 if CAT.startswith('gg0l'):
     SIGS    = ['ggH', 'WH','ttH','ZH', 'VBFH']
-    FIT     =  '2x2C'  ## Reasonable GoF for both WP40 and WP60
-    FITLIST = ['2x2C']
-    NOMTF   = 0.1
-    #MASSH   = 'pnet_vs_massA34a'    ## Higgs mass regression (mass, msoft, pnet)
+    FITLIST = ['0x0smr','1x1C']
+    NOMTF   = 0.06
     WP      = 'WP40'    ## Hto4b efficiency working point
 if CAT.startswith('VBFjj'):
     SIGS    = ['VBFH']
-    FIT     =  '2d2C'  ## Reasonable GoF for both WP40 and WP60
-    FITLIST = ['2d2C']
+    print('\nERROR!!! VBFjj should include more signal samples!\n')
+    FITLIST = ['0x0smr','1x1C']
     WP      = 'WP40'    ## Hto4b efficiency working point
     NOMTF   = (0.1 if WP == 'WP40' else 0.6)
-if CAT == 'Vjj':
-    SIGS    = ['WH','ZH']
-    FIT     =  '1d1C'
-    FITLIST = ['1d1C']
+if CAT.startswith('Vjj'):
+    SIGS    = ['WH','ZH','ttH','ggH','VBFH']
+    FITLIST = ['0x0','0x0smr','1d1C']
     NOMTF   = (0.15 if WP == 'WP40' else 0.22)
-if CAT == 'Wlv' or CAT == 'Wmv' or CAT == 'Wev':
-    CATL    = 'Wlv'
-    SIGS    = ['WH']
-    FIT     =  '1x1C'
-    FITLIST = ['1x1C']
-    NOMTF   = 0.12    ## Nominal fail-to-pass transfer factor (12%)
-if CAT == 'WlvLo' or CAT == 'ttblv':
-    SIGS    = ['WH'] if CAT.startswith('Wlv') else ['ttH']
-    FIT     =  '1x1C'
-    FITLIST = ['1x1C']
-    NOMTF   = 0.10    ## Nominal fail-to-pass transfer factor (8-12%)
-if CAT == 'Zvv' or CAT == 'ZvvHi' or CAT == 'ZvvLo':
-    SIGS    = ['ZH']
-    FIT     =  '1d1C'
-    FITLIST = ['1d1C']
-    NOMTF   = 0.17
-if CAT == 'Zll' or CAT == 'Zmm' or CAT == 'Zee':
-    CATL    = 'Zll'
-    SIGS    = ['ZH']
-    FIT     =  '0x0'  ## Default for Z to ll: flat transfer factor
-    FITLIST = ['0x0']
-    NOMTF   = 0.18    ## Nominal fail-to-pass transfer factor (18%)
-if CAT == 'LepHi' or CAT == 'XXHi':  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
+if CAT == 'LepHi':  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
     SIGS    = ['WH','ttH','ZH']
-    FIT     =  '1d1C'
-    FITLIST = ['1d1C']
+    FITLIST = ['0x0']
     WP      = 'WP60'    ## Hto4b efficiency working point
     NOMTF   = 0.11
-if CAT == 'LepLo' or CAT == 'XXLo':  ## WlvLo + ttblv + ZvvLo
+if CAT == 'LepLo':  ## WlvLo + ttblv + ZvvLo
     SIGS    = ['WH','ttH']
-    FIT     =  '1x1C'
-    FITLIST = ['1x1C']
+    FITLIST = ['0x0','0x0smr','1d1C']
     WP      = 'WP60'    ## Hto4b efficiency working point
     NOMTF   = 0.11
 
@@ -690,6 +661,6 @@ if __name__ == '__main__':
     # test_Impacts('SR', midMA, fitN)      ## Test impact of systematic uncertainties (?)
     # # test_generate_for_SR(fitN)  ## Absolutely no idea (???)
     # ## If using condor, run after condor jobs finish
-    for fitN in FITLIST:
-        test_GoF_plot('SR', fitN)     ## Plot results of GoF tests
-        # test_SigInj_plot('SR', midMA, fitN)  ## Plot results of signal injection tests
+    # for fitN in FITLIST:
+    #     test_GoF_plot('SR', fitN)     ## Plot results of GoF tests
+    #     test_SigInj_plot('SR', midMA, fitN)  ## Plot results of signal injection tests
