@@ -175,7 +175,7 @@ def _load_rpf_smear(fitN):
                                       loadPrevious=True,
                                       findreplace={'path':PATH, 'SIGNAME':_sig_names(),
                                                    'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
-    params_to_set =      twoD_for_rpf_smear.GetParamsOnMatch('rpf.*'+poly_order, 'mA_all_area', 'b')
+    params_to_set =      twoD_for_rpf_smear.GetParamsOnMatch('rpf.*'+fitN, 'mA_all_area', 'b')
     params_to_set.update(twoD_for_rpf_smear.GetParamsOnMatch('Background_smear', 'mA_all_area', 'b'))
     return {k:v['val'] for k,v in params_to_set.items()}
 
@@ -261,12 +261,13 @@ def _get_rpf_options():
     return _rpf_options
 
 '''---------------Primary functions---------------------------'''
-def test_make(SRorCR):
-    if VERBOSE: print('\nInside test_make(%s)' % SRorCR)
+def test_make(SRorCR, fitN):
+    if VERBOSE: print('\nInside test_make(%s, %s)' % (SRorCR, fitN))
     '''Constructs the workspace for either the CR or SR.
     Args: SRorCR (str): 'SR' or 'CR'.
     '''
     assert SRorCR in ['SR','CR']
+    assert fitN in FITLIST
 
     # Create the twoD object which starts by reading the JSON config and input arguments to
     # grab input simulation and data histograms, rebin them if needed, and save them all
@@ -282,7 +283,7 @@ def test_make(SRorCR):
     # findreplace adds lines to GLOBAL part of JSON (_addFindReplace in TwoDAlphabet/config.py)
     # in this case a specific signal model (production mode and "a" boson mass)
     # 'SIGNAME' also gets used as the $process in _batch_replace
-    twoD = TwoDAlphabet(_working_area(), _working_json(),
+    twoD = TwoDAlphabet(_working_area(fitN), _working_json(),
                         loadPrevious=False, verbose=VERBOSE,
                         findreplace={'path':PATH, 'SIGNAME':_sig_names(),
                                      'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
@@ -391,22 +392,20 @@ def test_make(SRorCR):
     # so the twoD object can be reconstructed later. If this line doesn't run or
     # if something in the above needs to change, everything will need to be re-run to this point.
     twoD.Save()
-    if VERBOSE: print('\nFinished test_make(%s)!' % SRorCR)
+    if VERBOSE: print('\nFinished test_make(%s, %s)!' % (SRorCR, fitN))
 
-def test_fit(SRorCR):
+def test_make_card(SRorCR, fitN):
     '''Loads a TwoDAlphabet object from an existing project area, selects
     a subset of objects to run over (a specific signal and TF), makes a sub-directory
-    to store the information, and runs the fit in that sub-directory. To make clear
+    to store the information, and generates cards in that sub-directory. To make clear
     when a directory/area is being specified vs when a signal is being selected,
     I've redundantly prepended the "subtag" argument with "_area".
     '''
-    if SRorCR == 'SR':
-        print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
 
     # So that the find-replace in the config doesn't need to be done again if I want
     # the SR (since it would have been performed already by test_make()), I grab
     # the runConfig.json that's already been saved in the created directory.
-    twoD = TwoDAlphabet(_working_area(), '%s/runConfig.json' % _working_area(), loadPrevious=True)
+    twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
 
     # Access the Ledger and perform a selection on it to create a subset
     # from which to build the card. One can modify the Ledger DataFrames
@@ -418,10 +417,9 @@ def test_fit(SRorCR):
     # The select() method takes as a function as its first argument
     # and any args to pass to that function as the remiaining arguments
     # to select(). See _select_signal for how to construct the function.
-    # Construct subsets for all mA values together and for middle mA.
-    midMA = MASSESA[math.floor(len(MASSESA) / 2)]
-    subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', FIT)
-    subsetMid = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR), FIT)
+    # Construct subsets for all mA values together and for each mA value.
+    ## midMA = MASSESA[math.floor(len(MASSESA) / 2)]  ## Previously only produced card for one middle mA value
+    subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', fitN)
 
     # Make card reads the ledger and creates a Combine card from it.
     # The second argument specifices the sub-directory to save the card in.
@@ -433,38 +431,42 @@ def test_fit(SRorCR):
     # toyData but this requires supplying almost the full Combine card line and
     # is reserved for quick hacks by those who are familiar with Combine cards.
     twoD.MakeCard(subsetAll, 'mA_all_area')
-    twoD.MakeCard(subsetMid, 'mA_%s_area' % midMA)
+    for massA in MASSESA:
+        signame = 'Htoaato4b_mA_%s_%s' % (massA, YEAR)
+        subset = twoD.ledger.select(_select_signal, signame, fitN)
+        areaname = 'mA_%s_area' % massA
+        twoD.MakeCard(subset, areaname)
+## End function: test_make_card(SRorCR, fitN)
 
+def test_fit(SRorCR, fitN):
     # Run the fit! Will run in the area specified by the `subtag` (ie. sub-directory) argument
     # and use the card in that area. Via the cardOrW argument, a different card or workspace can be
     # supplied (passed to the -d option of Combine). 
+    midMA = MASSESA[math.floor(len(MASSESA) / 2)]
+    twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
     twoD.MLfit('mA_all_area', rMin=0, rMax=20, verbosity=0)
-    twoD.MLfit('mA_%s_area' % midMA, rMin=0, rMax=20, verbosity=0)
+    # twoD.MLfit('mA_%s_area' % midMA, rMin=0, rMax=20, verbosity=0)
 
-def test_plot(SRorCR):
+def test_plot(SRorCR, fitN):
     '''Load the twoD object again and run standard plots for a specific subtag.
     Assumes loading the Ledger in this sub-directory but a different one can
     be provided if desired.
     '''
     if SRorCR == 'SR':
         print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
-    twoD = TwoDAlphabet(_working_area(), '%s/runConfig.json' % _working_area(), loadPrevious=True)
-    midMA = MASSESA[math.floor(len(MASSESA) / 2)]
-    subsetMid = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR), FIT)
-    twoD.StdPlots('mA_%s_area' % midMA, subsetMid)
-    ## For some reason PostFit2DShapesFromWorkspace segfaults in mA_all_area - AWB 2024.05.25
-    subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', FIT)
+    twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
+    subsetAll = twoD.ledger.select(_select_signal, 'Htoaato4b_mA_', fitN)
     twoD.StdPlots('mA_all_area', subsetAll)
 
-def test_limit(SRorCR):
+def test_limit(SRorCR, fitN):
     '''Perform a blinded limit. To be blinded, the Combine algorithm (via option `--run blind`)
     will create an Asimov toy dataset from the pre-fit model. Since the TF parameters are meaningless
     in our true "pre-fit", we need to load in the parameter values from a different fit so we have
     something reasonable to create the Asimov toy. 
     '''
     # Returns a dictionary of the TF parameters with the names as keys and the post-fit values as dict values.
-    params_to_set = _load_rpf_as_SR(FIT) if SRorCR == 'SR' else _load_rpf()
-    twoD = TwoDAlphabet(_working_area(), '%s/runConfig.json' % _working_area(), loadPrevious=True)
+    params_to_set = _load_rpf_smear_as_SR(fitN) if SRorCR == 'SR' else _load_rpf_smear(fitN)
+    twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
 
     # The iterWorkspaceObjs attribute stores the key-value pairs in the JSON config 
     # where the value is a list. This allows for later access like here so the user
@@ -472,15 +474,14 @@ def test_limit(SRorCR):
     # (necessitating remembering that it changed and having to hard-code the list here).
     if VERBOSE: print ('Possible signals: %s' % twoD.iterWorkspaceObjs['SIGNAME'])
 
-    ## for signame in twoD.iterWorkspaceObjs['SIGNAME']:
     areaname = None
     for massA in MASSESA:
         signame = 'Htoaato4b_mA_%s_%s' % (massA, YEAR)
         areaname = 'mA_%s_area' % massA
         print ('Performing limit for %s in %s' % (signame, areaname))
 
-        # Make a subset and card as in test_fit()
-        subset = twoD.ledger.select(_select_signal, signame, FIT)
+        # Make a subset and card as in test_make_card()
+        subset = twoD.ledger.select(_select_signal, signame, fitN)
         twoD.MakeCard(subset, areaname)
         # Run the blinded limit with our dictionary of TF parameters
         twoD.Limit(
@@ -491,22 +492,22 @@ def test_limit(SRorCR):
             condor=False
         )
 
-def test_GoF(SRorCR):
+def test_GoF(SRorCR, fitN):
     '''Perform a Goodness of Fit test using an existing working area.
     Requires using data so SRorCR is enforced to be 'CR' to avoid accidental unblinding.
     '''
     if SRorCR == 'SR':
         print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
 
-    twoD = TwoDAlphabet(_working_area(), '%s/runConfig.json' % _working_area(), loadPrevious=True)
+    twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
 
-    # If the card doesn't exist, make it (in the case that test_fit() wasn't run first).
+    # If the card doesn't exist, make it (in the case that test_make_card() wasn't run first).
     # Only need to run with one signal model, since we fix signal strength to 0 anyway.
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
     signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR)
     areaname = 'mA_%s_area' % midMA
     if not os.path.exists(twoD.tag+'/'+areaname+'/card.txt'):
-        subset = twoD.ledger.select(_select_signal, signame, FIT)
+        subset = twoD.ledger.select(_select_signal, signame, fitN)
         twoD.MakeCard(subset, areaname)
     # Run the Goodness of fit test with NTOY toys, r frozen to 0, TF parameters set to prefit.
     # This method always runs the evaluation on data interactively but the toy generation and evaluation
@@ -522,17 +523,17 @@ def test_GoF(SRorCR):
     # Note that no plotting is done here since one needs to wait for the condor jobs to finish first.
     # See test_GoF_plot() for plotting (which will also collect the outputs from the jobs).
 
-def test_SigInj(SRorCR, massA):
+def test_SigInj(SRorCR, massA, fitN):
     '''Perform a signal injection test'''
     assert SRorCR in ['SR','CR']
 
     signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR)
     areaname = 'mA_%s_area' % massA
-    twoD = TwoDAlphabet(_working_area(), '%s/runConfig.json' % _working_area(), loadPrevious=True)
+    twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
 
-    # If the card doesn't exist, make it (in the case that test_fit() wasn't run first).
+    # If the card doesn't exist, make it (in the case that test_make_card() wasn't run first).
     if not os.path.exists(twoD.tag+'/'+areaname+'/card.txt'):
-        subset = twoD.ledger.select(_select_signal, signame, FIT)
+        subset = twoD.ledger.select(_select_signal, signame, fitN)
         twoD.MakeCard(subset, areaname)
 
     # Perform the signal injection test with r=0 and with NTOY toys split over 10 jobs on condor.
@@ -542,22 +543,22 @@ def test_SigInj(SRorCR, massA):
         areaname, injectAmount=0,
         ntoys=NTOY,
         blindData=UseDataToy,
-        setParams=_load_rpf_as_SR(FIT),
+        setParams=_load_rpf_smear_as_SR(fitN),
         condor=False, njobs=1)
 
-def test_GoF_plot(SRorCR):
+def test_GoF_plot(SRorCR, fitN):
     '''Plot the GoF in fits_<CAT>_Htoaato4b_mH_<MASSH>_mA_<MASSA>_<WP>_<YEAR>/mA_<MASSA>_area (condor=True indicates that condor jobs need to be unpacked)'''
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
-    plot.plot_gof(_working_area(),
+    plot.plot_gof(_working_area(fitN),
                   'mA_%s_area' % midMA, condor=False)
 
 def test_SigInj_plot(SRorCR, massA):
     '''Plot the signal injection test for r=0 injected and stored in fits_<CAT>_Htoaato4b_mH_<MASSH>_mA_<MASSA>_<WP>_<YEAR>/mA_<MASSA>_area
     (condor=True indicates that condor jobs need to be unpacked)'''
-    plot.plot_signalInjection(_working_area(),
+    plot.plot_signalInjection(_working_area(fitN),
                               'mA_%s_area' % massA, injectedAmount=0, condor=False)
 
-def test_Impacts(SRorCR, massA):
+def test_Impacts(SRorCR, massA, fitN):
     '''Calculate the nuisance parameter impacts. The parameters corresponding to the unconstrained bins
     of the fail region are ignored. Assumes that a fit has already been performed so that the post-fit
     uncertainties can be used for the scans. However, another card or workspace can be specified as well
@@ -566,11 +567,11 @@ def test_Impacts(SRorCR, massA):
     '''
     if SRorCR == 'SR':
         print('\n\nWARNING!!! You may be unblinding prematurely!!!\n\n')
-    twoD = TwoDAlphabet(_working_area(), '%s/runConfig.json' % _working_area(), loadPrevious=True)
+    twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
 
     # We need to run impacts in the SR for them to make sense but we can't use the data in the SR while blinded.
     # So we need a toy to play with instead.
-    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR), FIT)
+    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR), fitN)
     # Make a new area to play in
     twoD.MakeCard(subset, 'mA_%s_impactArea' % massA)
 
@@ -580,7 +581,7 @@ def test_Impacts(SRorCR, massA):
         card='card.txt',
         workspace=None,
         ntoys=1, seed=123456, expectSignal=0,
-        setParams=_load_rpf_as_SR(FIT)
+        setParams=_load_rpf_smear_as_SR(fitN)
     )
     # Run the parameter impacts on the toy with the pre-fit workspace/card
     twoD.Impacts(
@@ -589,17 +590,17 @@ def test_Impacts(SRorCR, massA):
         extra='-t 1 --toysFile %s' % toy_file_path.split('/')[-1]
     )
 
-def test_generate_for_SR(massA):
+def test_generate_for_SR(massA, fitN):
     '''NOTE: This is an expert-level manipulation that requires understanding the underlying Combine
     commands. Use and change it only if you understand what each step is doing.
     
     Use the CR fit result to generate and fit a toy in the SR (without looking at SR data).
     There are two ways to do this which will be broken up into toyArea1 and toyArea2.'''
     # Load in the SR TwoDAlphabet object
-    twoD = TwoDAlphabet(_working_area(), '%s/runConfig.json' % _working_area(), loadPrevious=True)
+    twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
 
-    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR), FIT)
-    params_to_set = _load_rpf_as_SR(FIT)
+    subset = twoD.ledger.select(_select_signal, '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR), fitN)
+    params_to_set = _load_rpf_smear_as_SR(fitN)
 
     ###################################
     #-------- Version 1 --------------#
@@ -664,15 +665,25 @@ if __name__ == '__main__':
             exit()
     toys = int(sys.argv[1])
 
-    test_make('SR')         ## Generate histograms Generic2D objects, including transfer functions
-    test_fit('SR')          ## Perform fits to data with models
-    #test_plot('SR')         ## Plot data vs. prediction, pre-fit and post-fit
-    test_limit('SR')        ## Compute expected asymptotic limits
-    #test_GoF('SR')          ## Perform goodness-of-fit (GoF) test with toys
+    for fitN in FITLIST:
+        test_make('SR', fitN)         ## Generate histograms Generic2D objects, including transfer functions
+    for fitN in FITLIST:
+        test_make_card('SR', fitN)    ## Generate datacards
+    for fitN in FITLIST:
+        test_fit('SR', fitN)          ## Perform fits to data with models
+    if CARD_ONLY:
+        exit()
+    for fitN in FITLIST:
+        test_plot('SR', fitN)         ## Plot data vs. prediction, pre-fit and post-fit
+    for fitN in FITLIST:
+        test_limit('SR', fitN)        ## Compute expected asymptotic limits
+    for fitN in FITLIST:
+        test_GoF('SR', fitN)          ## Perform goodness-of-fit (GoF) test with toys
     # midMA = MASSESA[math.floor(len(MASSESA) / 2)]
-    # test_SigInj('SR', midMA)       ## Presumably performs some signal injection test (?)
-    # test_Impacts('SR', midMA)      ## Test impact of systematic uncertainties (?)
-    # # test_generate_for_SR()  ## Absolutely no idea (???)
+    # test_SigInj('SR', midMA, fitN)       ## Presumably performs some signal injection test (?)
+    # test_Impacts('SR', midMA, fitN)      ## Test impact of systematic uncertainties (?)
+    # # test_generate_for_SR(fitN)  ## Absolutely no idea (???)
     # ## If using condor, run after condor jobs finish
-    #test_GoF_plot('SR')     ## Plot results of GoF tests
-    # test_SigInj_plot('SR', midMA)  ## Plot results of signal injection tests
+    for fitN in FITLIST:
+        test_GoF_plot('SR', fitN)     ## Plot results of GoF tests
+        # test_SigInj_plot('SR', midMA, fitN)  ## Plot results of signal injection tests
