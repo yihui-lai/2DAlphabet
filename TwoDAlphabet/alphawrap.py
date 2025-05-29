@@ -87,6 +87,103 @@ class Generic2D(object):
 
         return out
 
+    def _manipulateSmear(self,name,other,smear_funcs,smear_nuis,operator=''):
+        '''Identical to _manipulate above, but adds smearing to `self` object.'''
+
+        print('\nInside _manipulateSmear, computing (%s) %s (%s)' % (self.name, operator, other.name))
+        out = Generic2D(name,self.binning,self.forcePositive)
+        for cat in _subspace:  ## Typically LOW, SIG, HIGH
+            #print('* Now looking at cat = %s' % cat)
+            new_cat_name = name+'_'+cat
+            for ybin in range(1,len(self.binning.ybinList)):  ## ybin is mass(a)
+                for xbin in range(1,len(self.binning.xbinByCat[cat])):  ## xbin is mass(H), indexed *within* "cat"
+                    new_bin_name   = '%s_bin_%s-%s'%(new_cat_name,xbin,ybin)
+                    self_bin_names = {}
+                    self_bin_names['C'] = new_bin_name.replace(new_cat_name, self.name+'_'+cat)
+                    other_bin_name = new_bin_name.replace(new_cat_name, other.name+'_'+cat)
+
+                    ## Construct 'self' (i.e. 'fail'/'control region') bin names to left/right/down/up
+                    ybinD,ybinU = ybin-1,ybin+1
+                    xbinL,xbinR = xbin-1,xbin+1
+                    catL,catR = cat,cat
+                    #print('  - %s xbin %d --> [%s %d, %s %d], ybin %d --> [%d, %d]' % (cat, xbin, catL, xbinL, catR, xbinR, ybin, ybinD, ybinU))
+                    if (not cat in ['LOW','SIG','HIGH']) or xbin < 1 or ybin < 1 \
+                       or xbin >= len(self.binning.xbinByCat[cat]) \
+                       or ybin >= len(self.binning.ybinList):
+                        raise RuntimeError('\n\nIn _manipulateSmear, invald bin %s %d-%d!!! Quitting.' % (cat, xbin, ybin))
+                    if ybinD < 1:
+                        ybinD = ybin
+                    if ybinU >= len(self.binning.ybinList):
+                        ybinU = ybin
+                    if xbinL < 1:
+                        if cat == 'LOW':
+                            xbinL = xbin  ## If left-most bin, just use the same x index
+                        elif cat == 'SIG':
+                            catL = 'LOW'
+                            xbinL = len(self.binning.xbinByCat['LOW']) - 1
+                        elif cat == 'HIGH':
+                            catL = 'SIG'
+                            xbinL = len(self.binning.xbinByCat['SIG']) - 1
+                    if xbinR >= len(self.binning.xbinByCat[cat]):
+                        if cat == 'HIGH':
+                            xbinR = xbin  ## If right-most bin, just use the same x index
+                        elif cat == 'SIG':
+                            catR = 'HIGH'
+                            xbinR = 1
+                        elif cat == 'LOW':
+                            catR = 'SIG'
+                            xbinR = 1
+
+                    #print('  - %s xbin %d --> [%s %d, %s %d], ybin %d --> [%d, %d]' % (cat, xbin, catL, xbinL, catR, xbinR, ybin, ybinD, ybinU))
+                    self_bin_names['L']  = '%s_%s_bin_%s-%s' % (self.name, catL, xbinL, ybin)
+                    self_bin_names['R']  = '%s_%s_bin_%s-%s' % (self.name, catR, xbinR, ybin)
+                    self_bin_names['D']  = '%s_%s_bin_%s-%s' % (self.name, cat,  xbin,  ybinD)
+                    self_bin_names['U']  = '%s_%s_bin_%s-%s' % (self.name, cat,  xbin,  ybinU)
+                    self_bin_names['DL'] = '%s_%s_bin_%s-%s' % (self.name, catL, xbinL, ybinD)
+                    self_bin_names['DR'] = '%s_%s_bin_%s-%s' % (self.name, catR, xbinR, ybinD)
+                    self_bin_names['UL'] = '%s_%s_bin_%s-%s' % (self.name, catL, xbinL, ybinU)
+                    self_bin_names['UR'] = '%s_%s_bin_%s-%s' % (self.name, catR, xbinR, ybinU)
+
+                    #print('  - self_bin_names[C] = %s' % self_bin_names['C'])
+                    #for shift in ['L','R','D','U','DL','DR','UL','UR']:
+                        #print('    ** Self_bin_names[%s] = %s' % (shift, self_bin_names[shift]))
+
+                    ## Parameter %0 is the whole transfer factor ('rpf') formula
+                    ## Parameters %1 - %9 are the 3x3 bins surrounding the center (%1 = center)
+                    ## Parameters %10, %11, %12, %13 are L, R, D, U bin overlaps with C
+                    smear_formula = '@0%s(' % operator
+                    smear_formula += '(1.0-@10-@11)*(1.0-@12-@13)*@1' ## C
+                    smear_formula += ' + (@10)*(1.0-@12-@13)*@2'      ## L
+                    smear_formula += ' + (@11)*(1.0-@12-@13)*@3'      ## R
+                    smear_formula += ' + (1.0-@10-@11)*(@12)*@4'      ## D
+                    smear_formula += ' + (1.0-@10-@11)*(@13)*@5'      ## U
+                    smear_formula += ' + (@10)*(@12)*@6'              ## DL
+                    smear_formula += ' + (@11)*(@12)*@7'              ## DR
+                    smear_formula += ' + (@10)*(@13)*@8'              ## UL
+                    smear_formula += ' + (@11)*(@13)*@9'              ## UR
+                    smear_formula += ')'
+
+                    smear_arg_list = RooArgList(other.binVars[other_bin_name])
+                    for neighb in ['C','L','R','D','U','DL','DR','UL','UR']:
+                        smear_arg_list.add(self.binVars[self_bin_names[neighb]])
+                    for shift in ['L','R','D','U']:
+                        smear_arg_list.add(smear_funcs[shift])
+
+                    #print('  - Generating bin %s from %s and %s' % (new_bin_name, self_bin_names['C'], other_bin_name))
+                    out.binVars[new_bin_name] = RooFormulaVar(
+                                                    new_bin_name, new_bin_name, smear_formula, smear_arg_list)
+                    #print(out.binVars[new_bin_name])
+
+        all_nuisances = self.nuisances+other.nuisances+[smear_nuis[sh] for sh in ['L','R','D','U']]
+        for nuisance in all_nuisances:
+            print('* Now appending nuisance %s' % nuisance['name'])
+            if nuisance['name'] in [n['name'] for n in out.nuisances]:
+                raise RuntimeError('Already tracking nuisance %s. Printing all nuisances...\n\t'%(nuisance['name'],all_nuisances))
+
+            out.nuisances.append(nuisance)
+
+        return out
+
     def Add(self,name,other,factor='1'):
         '''Add `self` with `other`. Optionally change the
         factor in front of `other` (defaults to 1). This option is
@@ -120,6 +217,11 @@ class Generic2D(object):
             Generic2D: Object containing the multiplication of `self` and `other`.
         '''
         return self._manipulate(name,other,'*')
+
+    def MultiplySmear(self,name,other,smear_funcs,smear_nuis):
+        '''Identical to Multiply above, but adds smearing to `self` object.'''
+        return self._manipulateSmear(name,other,smear_funcs,smear_nuis,'*')
+
     def Divide(self,name,other):
         '''Divide `self` by `other`.
 
@@ -193,7 +295,7 @@ class Generic2D(object):
             xbin, c = self.binning.xcatFromGlobal(xbin)
         formula_name = '%s_bin_%s-%s'%(self.name+'_'+c,xbin,ybin)
         return self.binVars[formula_name]
-            
+
 
 class ParametricFunction(Generic2D):
     def __init__(self,name,binning,formula,constraints={},forcePositive=True):
