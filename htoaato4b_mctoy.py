@@ -203,71 +203,68 @@ def _generate_constraints(fit_poly):
             break
     for i in range(nparams):
         if i == 0:
-            out[i] = {"MIN":-100.0, "MAX":100.0, "NOM":NOMTF, "ERROR":NOMTF}
+            out[i] = {"MIN":-10.0, "MAX":10.0, "NOM":np.log(NOMTF), "ERROR":abs(np.log(NOMTF))}
         else:
-            out[i] = {"MIN":-100.0, "MAX":100.0, "NOM":0.00, "ERROR":1.0},
+            out[i] = {"MIN":-10.0, "MAX":10.0, "NOM":0.00, "ERROR":1.0},
     return out
 
 def _generate_poly(fit_name, verb=False):
     fit_poly = ''
-    n_params = -1
-    if   '0x0' in fit_name: fit_poly = '@0'
-    elif '1x0' in fit_name: fit_poly = '@0*(1+@1*x)'
-    elif '0x1' in fit_name: fit_poly = '@0*(1+@1*y)'
-    elif '1x1' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y)+@3*x*y)'
-    elif '2x1' in fit_name: fit_poly = '@0*((1+@1*x+@4*x*x)*(1+@2*y)+@3*x*y+@5*x*x*y)'
-    elif '1x2' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y+@4*y*y)+@3*x*y+@5*x*y*y)'
-    elif '2x2' in fit_name: fit_poly = '@0*((1+@1*x+@4*x*x)*(1+@2*y+@5*y*y)+@3*x*y+@6*x*x*y+@7*x*y*y+@8*x*x*y*y)'
-    elif '1d1' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y))'
-    elif '2d1' in fit_name: fit_poly = '@0*((1+@1*x+@3*x*x)*(1+@2*y))'
-    elif '1d2' in fit_name: fit_poly = '@0*((1+@1*x)*(1+@2*y+@3*y*y))'
-    elif '2d2' in fit_name: fit_poly = '@0*((1+@1*x+@3*x*x)*(1+@2*y+@4*y*y))'
-    elif '2s2' in fit_name: fit_poly = '@0*((1+@1*x+@3*x*x)*(1+@2*y+@4*y*y)+@5*x*y)'
-    else:
-        print('\n\n*** ERROR! %s not in the list! Quitting. ***' % fit_name)
-        print(FITLIST)
-        sys.exit()
-    if verb: print('\nUsing fit function %s: %s' % (fit_name, fit_poly))
+    oX = int(fit_name[0])  ## Polynomial order in x
+    oY = int(fit_name[2])  ## Polynomial order in y
+    opr = fit_name[1]      ## Operator (x, d, s, B)
+    assert (oX >= 0 and oY >= 0 and oX < 4 and oY < 4 and opr in ['x','d','s']), 'ERROR!!! Invalid fit %s' % fit_name
+    fit_poly = 'exp(@0)'  ## Overall normalization (exponential to ensure value > 0 with no double minima)
+    nTerm = (oX+1)*(oY+1)-1 if opr == 'x' else (oX+oY if opr == 'd' else (oX+oY+1 if opr == 's' else -99))
+    ## Construct sum of absolute values of all polynomial terms
+    sTerm = '1.0+'+'+'.join('abs(@%d)' % iT for iT in range(1,nTerm+1))
+    fit_terms = []
+    ## Each term is normalized by 1/(1+sum) of other normalization terms
+    for tX in range(1, oX+1):
+        fit_terms.append(('(@%d/(%s))' % (tX, sTerm.replace('+abs(@%d)' % tX,'')))+('*x'*tX))
+    for tY in range(oX+1, oX+oY+1):
+        fit_terms.append(('(@%d/(%s))' % (tY, sTerm.replace('+abs(@%d)' % tY,'')))+('*y'*(tY-oX)))
+    if oX > 0 and oY > 0 and opr == 's':
+        fit_terms.append('(@%d/(%s))*x*y' % (oX+oY+1, sTerm.replace('+abs(@%s)' % str(oX+oY+1),'')))
+    if oX > 0 and oY > 0 and opr == 'x':
+        tXY = oX+oY
+        for tX in range(1, oX+1):
+            for tY in range(1, oY+1):
+                tXY += 1
+                fit_terms.append(('(@%d/(%s))' % (tXY, sTerm.replace('+abs(@%d)' % tXY,'')))+('*x'*tX)+('*y'*tY))
+    if oX+oY > 0:
+        fit_poly = fit_poly+'*(1.0+'+'+'.join(ft for ft in fit_terms)+')'
+        fit_poly = fit_poly.replace('/(1.0)','')
+    print('\nUsing fit function %s: %s' % (fit_name, fit_poly))
+    ## Replace nuisance parameters @n with tanh(@n), to map [-inf, 0, +inf] --> [-1, 0, +1]
+    for iNuis in reversed(range(1,99)):
+        fit_poly = fit_poly.replace('@%s' % iNuis, 'tanh(@%s)' % iNuis)
     ## Variable replacements: "C" = central, "M" = mass ratio
-    ## "M" gives m(a)/m(H) for m(a) = [10,62], m(H) = [60,220]
-    fit_len = len(fit_name)
-    if fit_name.startswith('e'): fit_len -= 1
-    if fit_len > 3:
-        if fit_name.endswith('C'):
-            if verb: print('  * Replacing "x" with "x-0.5" in fit function')
-            fit_poly = fit_poly.replace('x','(x-0.5)')
-            if fit_len == 4:
-                if verb: print('  * Replacing "y" with "y-0.5" in fit function')
-                fit_poly = fit_poly.replace('y','(y-0.5)')
-            elif fit_name[3] == 'M' or (fit_name.startswith('e') and fit_name[4] == 'M'):
-                if verb: print('  * Replacing "y" with "((y+(10/52)-0.5)/(x+(60/160)))" in fit function')
-                fit_poly = fit_poly.replace('y','((y+(10/52)-0.5)/(x+(60/160)))')
-            else:
-                print('\n\n*** ERROR! Invalid fit function %s! Quitting. ***' % fit_name)
-                sys.exit()
-        elif fit_len == 4 and fit_name.endswith('M'):
-            if verb: print('  * Replacing "y" with "((y+(10/52))/(x+(60/160)))" in fit function')
-            fit_poly = fit_poly.replace('y','((y+(10/52))/(x+(60/160)))')
-        else:
-            if verb: print('\n\n*** ERROR! Invalid fit function %s! Quitting. ***' % fit_name)
-            sys.exit()
-    if fit_name.startswith('e'):
-            if verb: print('  * Starting fit function with exponential')
-            fit_poly = 'exp(-2.32+'+fit_poly+')'
-    if verb: print('Final form: %s\n' % (fit_poly))
+    ## "M" gives m(a)/m(H) for m(a) = [10,66], m(H) = [50,200]
+    ## Bin axes are mapped to [0,+1] (see mappedBinCenter in alphawrap.py)
+    ## "C" effectively maps bin axes to [-1,+1]
+    if len(fit_name) > 3 and fit_name[3] == 'C':
+        if oX > 0:
+            if verb: print('  * Replacing "x" with "2*(x-0.5)" in fit function')
+            fit_poly = fit_poly.replace('*x','*2.0*(x-0.5)')
+        if oY > 0:
+            if verb: print('  * Replacing "y" with "2*(y-0.5)" in fit function')
+            fit_poly = fit_poly.replace('*y','*2.0*(y-0.5)')
+    if len(fit_name) > 3 and fit_name[3] == 'M' and oY > 0:
+        if verb: print('  * Replacing "y" with "((y+(10/56)-0.5)/(x+(50/150)))" in fit function')
+        fit_poly = fit_poly.replace('y','((y+(10/56)-0.5)/(x+(50/150)))')
+    print('Final fit function form: %s\n' % (fit_poly))
     return fit_poly
 
 ## End function: _generate_poly(fit_name)
 
-def _get_rpf_options():
-    _rpf_options = {}
-    for fName in FITLIST:
-        if VERBOSE: print('Inside _get_rpf_options, running _generate_poly(%s)' % fName)
-        fit_poly = _generate_poly(fName)
-        _rpf_options[fName] = { 'form': fit_poly,
-                                'constraints': _generate_constraints(fit_poly) }
-        if VERBOSE: print(_rpf_options[fName])
-    return _rpf_options
+def _get_rpf_option(fitN):
+    if VERBOSE: print('Inside _get_rpf_option, running _generate_poly(%s)' % fitN)
+    fit_poly = _generate_poly(fitN)
+    _rpf_option = { 'form': fit_poly,
+                    'constraints': _generate_constraints(fit_poly) }
+    if VERBOSE: print(_rpf_option)
+    return _rpf_option
 
 '''---------------Primary functions---------------------------'''
 def test_make(SRorCR, fitN):
@@ -327,7 +324,7 @@ def test_make(SRorCR, fitN):
         qcd_f = BinnedDistribution(
                     fail_name, qcd_hists[fl],
                     binning_f, constant=False,
-                    forcePositive=True, verbose=VERBOSE
+                    forcePositive=False, verbose=VERBOSE
                 )
 
         # We add it to `twoD` so its included when making the RooWorkspace and ledger.
