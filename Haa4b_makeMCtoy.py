@@ -1,13 +1,15 @@
 ## From https://github.com/bouchamaouihichem/2DAlphabet/blob/master/Haa4b_makeMCtoy.py
 
-import ROOT
 import os
-import numpy as np
 import sys
+import glob
+import shutil
+import json
+import ROOT as R
+import numpy as np
 
-ROOT.gROOT.SetBatch(True)
+R.gROOT.SetBatch(True)
 
-TEST = False  ## Write to test output folders, to not overwrite existing files
 VERBOSE  = False
 VVERBOSE = False
 VVVERBOSE = False
@@ -16,8 +18,12 @@ NTOYS    = int(sys.argv[2])
 TOYSOURCE = str(sys.argv[3]) ## MC, Data, DataAndMC, None
 SMOOTH_CUT = 3.0  ## Largest allowed fluctation in smoothed background (in standard deviations)
 MASSESA = ['15','30','55']
-SIGINJ = [1, 2, 5, 10, 20, 50]  ## Signal to inject, in %
+SIGINJ = {'15':[5, 10, 20, 50],
+          '30':[10, 20, 50, 100],
+          '55':[10, 20, 50, 100, 200]}  ## Signal to inject, in 1/1000ths
 YEAR = '2018'
+PLOT_DIR = 'plots/'+CATEGORY+'/toys'
+JSON_DIR = 'jsons/toys/'+CATEGORY
 
 ## Set toy options
 doToysMC   = (TOYSOURCE == 'MC' or TOYSOURCE == 'DataAndMC')
@@ -29,6 +35,11 @@ if not (doToysMC or doToysData or TOYSOURCE == 'None'):
 if not os.path.exists('plots/'+CATEGORY):
     print('\n\n\nHaa4b_makeMCtoy.py error! plots/'+CATEGORY+' does not exist. Run merge_file_script_mctoy.py first.\n')
     sys.exit()
+## Make sub-directories for output toy ROOT and JSON files
+if not os.path.exists(PLOT_DIR):
+    os.mkdir(PLOT_DIR)
+if not os.path.exists(JSON_DIR):
+    os.system('mkdir -p '+JSON_DIR)
 
 ###################
 ## Helper functions
@@ -291,18 +302,18 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
     avg_toy_varSq = avg_toy_hist.Clone(avg_toy_hist.GetName().replace('toyAvg','toyVarSq'))
     avg_toy_hist_sig = {}
     for mA in h_sigs.keys():
-        for sInj in SIGINJ:
-            key = 'mA_%s_sigBr_%02d' % (mA, sInj)
+        for sInj in SIGINJ[mA]:
+            key = 'mA_%s_sigBr_%03d' % (mA, sInj)
             avg_toy_hist_sig[key] = avg_toy_hist.Clone(avg_toy_hist.GetName().replace('toyAvg', 'toyAvg_%s' % key))
 
     ## Loop and generate the toys
     for iT in range(nToy):
         filename = hist.GetName().split("_pnet")[0].replace(str_repl, str_repl+'toy%d_' % iT)
         ## Create new ROOT file (root_cmd = "RECREATE"), or add to existing ("UPDATE")
-        output_file = ROOT.TFile(output_dir+"/"+filename+".root", root_cmd)
+        output_file = R.TFile(output_dir+"/"+filename+".root", root_cmd)
         out_file_sig = {}
         for key in avg_toy_hist_sig.keys():
-            out_file_sig[key] = ROOT.TFile(output_file.GetName().replace('toy%d' % iT, 'toy%d_%s' % (iT, key)), root_cmd)
+            out_file_sig[key] = R.TFile(output_file.GetName().replace('toy%d' % iT, 'toy%d_%s' % (iT, key)), root_cmd)
         if iT == 0:
             print('Writing toy #%d to %s' % (iT, output_dir+"/"+filename+".root"))
         if (iT % 100) == 0:
@@ -319,8 +330,8 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
                 toy_hist.SetBinError(iX,iY,np.sqrt(fluctuated))
                 for key in toy_hist_sig.keys():
                     mA = key[3:5]
-                    sBr = int(key[-2:])*0.01
-                    assert (mA in MASSESA and int(key[-2:]) in SIGINJ), 'Haa4b_makeMCtoy.py: mA = %s, sBr = %d' % (mA, sBr)
+                    sBr = int(key[-3:])*0.001
+                    assert (mA in MASSESA and int(key[-3:]) in SIGINJ[mA]), 'Haa4b_makeMCtoy.py: mA = %s, sBr = %d' % (mA, sBr)
                     exp_sig = expected + h_sigs[mA].GetBinContent(iX,iY)*sBr
                     fluc_sig = np.random.poisson(exp_sig)
                     toy_hist_sig[key].SetBinContent(iX,iY,fluc_sig)
@@ -348,7 +359,7 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
     for jT in range(nToy):
         filename = hist.GetName().split("_pnet")[0].replace(str_repl, str_repl+'toy%d_' % jT)
         ## Reopen ROOT file with toy
-        output_file = ROOT.TFile(output_dir+"/"+filename+".root", "OPEN")
+        output_file = R.TFile(output_dir+"/"+filename+".root", "OPEN")
         toy_hist = output_file.Get(hist.GetName().replace(str_repl, str_repl+'toy%d_' % jT))
         ## Get the difference squared
         toy_hist.Add(avg_toy_hist, -1)
@@ -440,7 +451,7 @@ for samp in samps:
     hname = CATEGORY+'_'+samp+'_'+YEAR+'_pnet_'+WP
     pass_name = hname+'_Pass_Nom'
     fail_name = hname+'_Fail_Nom'
-    in_file = ROOT.TFile.Open(filepath)
+    in_file = R.TFile.Open(filepath)
 
     ## Store signal histograms
     isSignal = False
@@ -520,7 +531,7 @@ h_MC_fail = reset_bin_errors(h_MC_fail, h_MC_fail, eff_wgt_fail)
 
 
 ## Write h_MC_pass and h_MC_fail and signal, without smoothing, to ROOT file
-out_file_dataMC = ROOT.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CATEGORY, CATEGORY, TOYSOURCE, NTOYS), 'RECREATE')
+out_file_dataMC = R.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CATEGORY, CATEGORY, TOYSOURCE, NTOYS), 'RECREATE')
 h_data_pass.Write()
 h_data_fail.Write()
 h_MC_pass.Write()
@@ -598,8 +609,8 @@ h_MCrounded_fail = round_bins(h_MCsmooth2_fail, h_MCrounded_fail)
 h_MCrounded_sig_pass = {}
 h_MCrounded_sig_fail = {}
 for mA in h_sig_pass.keys():
-    for sInj in SIGINJ:
-        key = 'mA_%s_sigBr_%02d' % (mA, sInj)
+    for sInj in SIGINJ[mA]:
+        key = 'mA_%s_sigBr_%03d' % (mA, sInj)
         h_MCrounded_sig_pass[key] = h_MCsmooth2_pass.Clone(h_MCsmooth2_pass.GetName().replace('smooth2','rounded_'+key))
         h_MCrounded_sig_fail[key] = h_MCsmooth2_fail.Clone(h_MCsmooth2_fail.GetName().replace('smooth2','rounded_'+key))
         h_MCrounded_sig_pass[key].Add(h_sig_pass[mA], sInj*0.01)
@@ -609,14 +620,14 @@ for mA in h_sig_pass.keys():
 
 ## Write rounded MC to its own "toy" file
 out_MCr_name = h_MCrounded_pass.GetName().split("_pnet")[0]
-out_fileMCr = ROOT.TFile('plots/'+CATEGORY+'/'+out_MCr_name+'.root', 'RECREATE')
+out_fileMCr = R.TFile('plots/'+CATEGORY+'/'+out_MCr_name+'.root', 'RECREATE')
 h_MCrounded_pass.Write()
 h_MCrounded_fail.Write()
 out_fileMCr.Write()
 out_fileMCr.Close()
 out_fileMCr_sig = {}
 for key in h_MCrounded_sig_pass.keys():
-    out_fileMCr_sig[key] = ROOT.TFile(out_fileMCr.GetName().replace('rounded','rounded_'+key), 'RECREATE')
+    out_fileMCr_sig[key] = R.TFile(out_fileMCr.GetName().replace('rounded','rounded_'+key), 'RECREATE')
     h_MCrounded_sig_pass[key].Write()
     h_MCrounded_sig_fail[key].Write()
     out_fileMCr_sig[key].Write()
@@ -629,15 +640,21 @@ avg_toyMC_fail = None
 avg_toyData_pass = None
 avg_toyData_fail = None
 if doToysMC:
-    avg_toyMC_pass = toys_generator(h_MCsmooth2_pass, NTOYS, 'plots/'+CATEGORY, "RECREATE", h_sig_pass)
-    avg_toyMC_fail = toys_generator(h_MCsmooth2_fail, NTOYS, 'plots/'+CATEGORY, "UPDATE", h_sig_fail)
+    print('\nRemoving all files matching plots/'+CATEGORY+'/toys/*MCsmooth2_toy*')
+    for fl in glob.glob('plots/'+CATEGORY+'/toys/*MCsmooth2_toy*'):
+        os.remove(fl)
+    avg_toyMC_pass = toys_generator(h_MCsmooth2_pass, NTOYS, PLOT_DIR, "RECREATE", h_sig_pass)
+    avg_toyMC_fail = toys_generator(h_MCsmooth2_fail, NTOYS, PLOT_DIR, "UPDATE", h_sig_fail)
 if doToysData:
-    avg_toyData_pass = toys_generator(h_data_pass, NTOYS, 'plots/'+CATEGORY, "RECREATE", h_sig_pass)
-    avg_toyData_fail = toys_generator(h_data_fail, NTOYS, 'plots/'+CATEGORY, "UPDATE", h_sig_fail)
+    print('\nRemoving all files matching plots/'+CATEGORY+'/toys/*Data_toy*')
+    for fl in glob.glob('plots/'+CATEGORY+'/toys/*Data_toy*'):
+        os.remove(fl)
+    avg_toyData_pass = toys_generator(h_data_pass, NTOYS, PLOT_DIR, "RECREATE", h_sig_pass)
+    avg_toyData_fail = toys_generator(h_data_fail, NTOYS, PLOT_DIR, "UPDATE", h_sig_fail)
 
 
 ## Write h_MC_pass and h_MC_fail and average toy histograms to ROOT file
-out_file_dataMC = ROOT.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CATEGORY, CATEGORY, TOYSOURCE, NTOYS), 'UPDATE')
+out_file_dataMC = R.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CATEGORY, CATEGORY, TOYSOURCE, NTOYS), 'UPDATE')
 wrt_hists = [[h_MCsmooth1_pass, h_MCsmooth1_fail],
              [h_MCsmooth2_pass, h_MCsmooth2_fail],
              [h_MCrounded_pass, h_MCrounded_fail]]
@@ -679,60 +696,56 @@ out_file_dataMC.Close()
 del out_file_dataMC
 
 
-# Read JSON file
-import json
-jMC_dir   = 'mctoysjson/'+CATEGORY
-jData_dir = 'datatoysjson/'+CATEGORY
-if TEST:
-    jMC_dir = 'mctoysjson_test/'+CATEGORY
-    jData_dir = 'datatoysjson_test/'+CATEGORY
-os.system("mkdir -p "+jMC_dir)
-os.system("mkdir -p "+jData_dir)
-
 ## Write JSON for rounded MC template
-print('\nWriting '+jMC_dir+'/'+CATEGORY+'_Htoaato4b_MCrounded.json')
+print('\nWriting '+JSON_DIR+'/'+CATEGORY+'_Htoaato4b_MCrounded.json')
 with open('jsons/%s_Htoaato4b_MC.json' % CATEGORY, 'r') as jf:
     jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
 jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCrounded_'+YEAR
-with open(jMC_dir+'/'+CATEGORY+'_Htoaato4b_MCrounded.json', 'w') as jf:
+with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_MCrounded.json', 'w') as jf:
     json.dump(jsonMC, jf, indent=2)
 for key in h_MCrounded_sig_pass.keys():
     jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCrounded_'+key+'_'+YEAR
-    with open(jMC_dir+'/'+CATEGORY+'_Htoaato4b_MCrounded_'+key+'.json', 'w') as jf:
+    with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_MCrounded_'+key+'.json', 'w') as jf:
         json.dump(jsonMC, jf, indent=2)
 ## Write JSON for rounded data
-print('Writing '+jData_dir+'/'+CATEGORY+'_Htoaato4b_Data.json')
+print('Writing '+JSON_DIR+'/'+CATEGORY+'_Htoaato4b_Data.json')
 with open('jsons/%s_Htoaato4b_Data.json' % CATEGORY, 'r') as jf:
     jsonData = json.load(jf)  # `data` is now a Python dictionary or list
 jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_'+YEAR
-with open(jData_dir+'/'+CATEGORY+'_Htoaato4b_Data.json', 'w') as jf:
+with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_Data.json', 'w') as jf:
     json.dump(jsonData, jf, indent=2)
 
 
 if doToysMC:
-    print('\nWriting '+str(NTOYS)+' MC toys to '+jMC_dir+'/')
+    print('\nWriting '+str(NTOYS)+' MC toys to '+JSON_DIR+'/')
+    print('First remove files matching '+JSON_DIR+'/*mctoy*')
+    for fl in glob.glob(JSON_DIR+'/*mctoy*'):
+        os.remove(fl)
     for iToy in range(NTOYS):
         with open('jsons/%s_Htoaato4b_MC.json' % CATEGORY, 'r') as jf:
             jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
         jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCsmooth2_toy'+str(iToy)+'_'+YEAR
-        with open(jMC_dir+'/'+CATEGORY+'_Htoaato4b_mctoy'+str(iToy)+'.json', 'w') as jf:
+        with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_mctoy'+str(iToy)+'.json', 'w') as jf:
             json.dump(jsonMC, jf, indent=2)
         for key in h_MCrounded_sig_pass.keys():
             jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCsmooth2_toy'+str(iToy)+'_'+key+'_'+YEAR
-            with open(jMC_dir+'/'+CATEGORY+'_Htoaato4b_mctoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
+            with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_mctoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
                 json.dump(jsonMC, jf, indent=2)
 
 if doToysData:
-    print('\nWriting '+str(NTOYS)+' data toys to '+jData_dir+'/')
+    print('\nWriting '+str(NTOYS)+' data toys to '+JSON_DIR+'/')
+    print('First remove files matching '+JSON_DIR+'/*datatoy*')
+    for fl in glob.glob(JSON_DIR+'/*datatoy*'):
+        os.remove(fl)
     for jToy in range(NTOYS):
         with open('jsons/%s_Htoaato4b_Data.json' % CATEGORY, 'r') as jf:
             jsonData = json.load(jf)  # `data` is now a Python dictionary or list
         jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_toy'+str(jToy)+'_'+YEAR
-        with open(jData_dir+'/'+CATEGORY+'_Htoaato4b_datatoy'+str(jToy)+'.json', 'w') as jf:
+        with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_datatoy'+str(jToy)+'.json', 'w') as jf:
             json.dump(jsonData, jf, indent=2)
         for key in h_MCrounded_sig_pass.keys():
             jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_toy'+str(iToy)+'_'+key+'_'+YEAR
-            with open(jData_dir+'/'+CATEGORY+'_Htoaato4b_datatoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
+            with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_datatoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
                 json.dump(jsonData, jf, indent=2)
 
 print('\n\nALL DONE with Haa4b_makeMCtoy.py!!!\n\n')
