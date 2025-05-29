@@ -170,17 +170,19 @@ def _working_json():
         working_json = 'datatoysjson/'+CAT+'/'+working_json.replace('.json', ('_datatoy%d.json' % toys if toys >= 0 else '_Data.json'))
     return working_json
         
-def _load_rpf(poly_order):
-    twoD_for_rpf = TwoDAlphabet(_working_area(), _working_json(),
-                                loadPrevious=True,
-                                findreplace={'path':PATH, 'SIGNAME':_sig_names(),
-                                             'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
-    params_to_set = twoD_for_rpf.GetParamsOnMatch('rpf.*'+poly_order, 'mA_all_area', 'b')
+def _load_rpf_smear(fitN):
+    twoD_for_rpf_smear = TwoDAlphabet(_working_area(fitN), _working_json(),
+                                      loadPrevious=True,
+                                      findreplace={'path':PATH, 'SIGNAME':_sig_names(),
+                                                   'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
+    params_to_set =      twoD_for_rpf_smear.GetParamsOnMatch('rpf.*'+poly_order, 'mA_all_area', 'b')
+    params_to_set.update(twoD_for_rpf_smear.GetParamsOnMatch('Background_smear', 'mA_all_area', 'b'))
     return {k:v['val'] for k,v in params_to_set.items()}
 
-def _load_rpf_as_SR(poly_order):
+
+def _load_rpf_smear_as_SR(fitN):
     params_to_set = {}
-    for k,v in _load_rpf(poly_order).items():
+    for k,v in _load_rpf_smear(fitN).items():
         params_to_set[k.replace('CR','SR')] = v
     return params_to_set
 
@@ -327,43 +329,63 @@ def test_make(SRorCR):
         # As global variables, we've defined some different transfer function (TF) options.
         # We only want to include one of these at the time of fitting but we want to construct
         # them all right now so we can pick and choose later.
-        rpf_options = _get_rpf_options()
-        for opt_name in rpf_options.keys():
-            # We have two regions determined by a TF, "pass" and "fail" with the "pass"
-            # being a parametric scaling of the "fail". The functional form and the
-            # dictionary of constraints is defined in _rpf_options so we just plug
-            # these in, being careful to name the objects uniquely (this affects
-            # the naming of the RooFormulaVars created, which need to be unique).
+        rpf_option = _get_rpf_option(fitN)
 
-            # The ParametricFunction class is the same as the BinnedDistribution except
-            # the bins are RooFormulaVars constructed from the input formula with the
-            # "x" and "y" taken as the centers of each bin.
-            # The constraints option takes as input a dictionary with keys that control
-            # the minimum, maximum, and error (initial step) of each parameter. It can
-            # also be used to specify if the parameter should be unconstrainted (flatParam)
-            # or Gaussian constrained (param <mu> <sigma>).
-            # By default bin values are forced to be >= 1e-9 for any parameter values (forcePositive)
-            # Does this lead to any non-linear behavior? How does it affect uncertainties? - AWB 2024.05.021
-            if VERBOSE: print('  * For opt_name = %s, booking qcd_rpfL ParametricFunction' % opt_name)
-            opt_fit = rpf_options[opt_name]
-            qcd_rpf = ParametricFunction(
-                       (fail_name.replace('Fail','rpfL')).replace('fail','rpfL')+'_'+opt_name,
-                       binning_f, opt_fit['form'],
-                       constraints=opt_fit['constraints'], forcePositive=True
-                   )
-            
+        # We have two regions determined by a TF, "pass" and "fail" with the "pass"
+        # being a parametric scaling of the "fail". The functional form and the
+        # dictionary of constraints is defined in _get_rpf_option so we just plug
+        # these in, being careful to name the objects uniquely (this affects
+        # the naming of the RooFormulaVars created, which need to be unique).
+
+        # The ParametricFunction class is the same as the BinnedDistribution except
+        # the bins are RooFormulaVars constructed from the input formula with the
+        # "x" and "y" taken as the centers of each bin.
+        # The constraints option takes as input a dictionary with keys that control
+        # the minimum, maximum, and error (initial step) of each parameter. It can
+        # also be used to specify if the parameter should be unconstrainted (flatParam)
+        # or Gaussian constrained (param <mu> <sigma>).
+        # By default bin values are forced to be >= 1e-9 for any parameter values (forcePositive)
+        # Does this lead to any non-linear behavior? How does it affect uncertainties? - AWB 2024.05.021
+        if VERBOSE: print('  * For fitN = %s, booking qcd_rpfL ParametricFunction' % fitN)
+        qcd_rpf = ParametricFunction(
+            (fail_name.replace('Fail','rpfL')).replace('fail','rpfL')+'_'+fitN,
+            binning_f, rpf_option['form'],
+            constraints=rpf_option['constraints'], forcePositive=False
+        )
+
+        # Generate nuisance parameters assocated with smearing (left / right / up / down)
+        if fitN.endswith('smr'):
+            smear_nuis = {}
+            smear_funcs = {}
+            for shift in ['L','R','D','U']:
+                sf_name = '%sBackground_smear%s' % (CAT, shift)
+                sp_name = sf_name+'_par0'
+                ## Create "nuisances" similar to _createFuncVars in alphawrap.py
+                smear_nuis[shift] = {'name': sp_name,
+                                     'obj': RooRealVar(sp_name, sp_name, -1.0, -100.0, 100.0),
+                                     'constraint': 'flatParam'}
+                smear_nuis[shift]['obj'].setError(10.0)
+                ## Function (1/6)*(1+tanh(x)) maps [-inf, 0, +inf] --> [0, 1/6, 1/3]
+                ## Default starting value of x = -1 corresponds to 4% smearing (92% from central bin)
+                smear_funcs[shift] = RooFormulaVar(sf_name, sf_name, '(1.0/6.0)*(1.0+tanh(@0))',
+                                                   RooArgList(smear_nuis[shift]['obj']))
+
             # Of course, what we actually need is these TFs multiplied by something else:
             #     qcd_p = qcd_f*rpf
             # The Multiply method will make a new set of RooFormulaVars defined by multiplying the RooAbsArgs
             # of each object together. Other methods exist for adding and dividing, where Add() can take an
             # optional factor so that subtraction is possible.
-            qcd_p = qcd_f.Multiply(fail_name.replace('Fail','Pass')+'_'+opt_name, qcd_rpf)
+            qcd_p = qcd_f.MultiplySmear(fail_name.replace('Fail','Pass')+'_'+fitN, qcd_rpf, smear_funcs, smear_nuis)
+        else:  ## No smearing
+            qcd_p = qcd_f.Multiply(fail_name.replace('Fail','Pass')+'_'+fitN, qcd_rpf)
 
-            # Now add the final models to the `twoD` object for tracking
-            # Note that we have unique process names so they are identifiable
-            # but we give them different titles so that they look pretty in
-            # the final plot legends. First two args are just strings (process and region).
-            twoD.AddAlphaObj(CAT+'Background_'+opt_name, ps, qcd_p, title=CAT+'Background')
+        # Now add the final models to the `twoD` object for tracking
+        # Note that we have unique process names so they are identifiable
+        # but we give them different titles so that they look pretty in
+        # the final plot legends. First two args are just strings (process and region).
+        twoD.AddAlphaObj(CAT+'Background_'+fitN, ps, qcd_p, title=CAT+'Background')
+
+    ## End loop: for ps, fl in [['Pass', 'Fail'] for r in twoD.ledger.GetRegions() if r == 'Pass']
 
     # Save() will save the RooWorkspace and the ledgers and other associated pieces
     # so the twoD object can be reconstructed later. If this line doesn't run or
