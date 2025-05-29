@@ -528,6 +528,7 @@ class TwoDAlphabet:
                 'combine -M FitDiagnostics',
                 '-d '+card_or_w,
                 '--skipBOnlyFit', '--cminDefaultMinimizerStrategy {}'.format(defMinStrat),
+                '--robustFit 1','--profilingMode all', ## '--stepSize 0.01'? '--setRobustFitTolerance 0.02'?
                 '-t {ntoys}', '--toysFrequentist', '--bypassFrequentistFit' if blindData else '',
                 param_str, '-s {seed}',
                 '--rMin %s'%rMin, '--rMax %s'%rMax,
@@ -916,7 +917,7 @@ def _runMLfit(cardOrW, blinding, verbosity, rMin, rMax, setParams, usePreviousFi
         raise RuntimeError("Invalid cminDefaultMinimizerStrategy passed ({}) - please ensure that defMinStrat = 0, 1, or 2".format(defMinStrat))
     if usePreviousFit: param_options = ''
     else:              param_options = '--text2workspace "--channel-masks" '
-    params_to_set = ','.join(['mask_%s_SIG=1'%r for r in blinding]+['%s=%s'%(p,v) for p,v in setParams.items()]+['r=1'])
+    params_to_set = ','.join(['mask_%s_SIG=1'%r for r in blinding]+['%s=%s'%(p,v) for p,v in setParams.items()]+['r=0.1'])
     param_options += '--setParameters '+params_to_set
 
     fit_cmd = 'combine -M FitDiagnostics {card_or_w} {param_options} --saveWorkspace --cminDefaultMinimizerStrategy {defMinStrat} --rMin {rmin} --rMax {rmax} -v {verbosity} {extra}'
