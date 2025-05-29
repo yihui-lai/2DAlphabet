@@ -154,20 +154,29 @@ def _select_signal(row, args):
     else:
         return True
 
-def _working_area():
-    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s' % (CAT, MASSH, MASSA, WP, YEAR)
+def _working_area(fitN):
+    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s_%s' % (CAT, MASSH, MASSA, WP, fitN, YEAR)
     if UseMCToy:
-        working_area = 'mctoysjson/'+working_area+(('_toy%d' % toys) if toys >= 0 else '_MCrounded')
+        working_area = 'mctoys/'+working_area+(('_toy%d' % toys) if toys >= 0 else '_MCrounded')
     if UseDataToy:
-        working_area = 'datatoysjson/'+working_area+(('_toy%d' % toys) if toys >= 0 else '_Data')
-    return working_area
+        working_area = 'datatoys/'+working_area+(('_toy%d' % toys) if toys >= 0 else '_Data')
+    if SIGINJ.startswith('mA_') and '_sigBr_' in SIGINJ:
+        working_area += ('_'+SIGINJ)
+    if not os.path.exists(OUT_DIR+'/'+working_area):
+        os.system('mkdir -p '+OUT_DIR+'/'+working_area)
+    return OUT_DIR+'/'+working_area
 
 def _working_json():
-    working_json = '%s_Htoaato4b.json' % CATL
+    working_json = 'jsons/%s_Htoaato4b_Data.json' % CATL
+    toy_str = ''
     if UseMCToy:
-        working_json = 'mctoysjson/'+CAT+'/'+working_json.replace('.json', ('_mctoy%d.json' % toys if toys >= 0 else '_MCrounded.json'))
+        toy_str = ('_mctoy%d.json' % toys) if toys >= 0 else '_MCrounded.json'
+        working_json = 'jsons/toys/'+CAT+'/'+working_json[6:].replace('_Data.json', toy_str)
     if UseDataToy:
-        working_json = 'datatoysjson/'+CAT+'/'+working_json.replace('.json', ('_datatoy%d.json' % toys if toys >= 0 else '_Data.json'))
+        toy_str = ('_datatoy%d.json' % toys) if toys >= 0 else '_Data.json'
+        working_json = 'jsons/toys/'+CAT+'/'+working_json[6:].replace('_Data.json', toy_str)
+    if SIGINJ.startswith('mA_') and '_sigBr_' in SIGINJ:
+        working_json = working_json.replace('.json', '_'+SIGINJ+'.json')
     return working_json
         
 def _load_rpf_smear(fitN):
