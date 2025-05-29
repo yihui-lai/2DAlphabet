@@ -1,12 +1,12 @@
 {
-  "NAME": "Wlv_Htoaato4b",
+  "NAME": "gg0lLo_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
       "SYSTEMATICS":[],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "ALIAS": "Wlv_Data_2018",
+      "ALIAS": "gg0lLo_Data_2018",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
@@ -40,18 +40,18 @@
       "X": {
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
-        "MIN": 70,
+        "MIN": 60,
         "MAX": 200,
-        "NBINS": 13,
-        "SIGSTART": 100,
+        "NBINS": 14,
+        "SIGSTART": 110,
         "SIGEND": 140
       },
       "Y": {
         "NAME": "mA",
         "TITLE": "m_{a} (GeV)",
         "MIN": 10,
-        "MAX": 62,
-        "NBINS": 13
+        "MAX": 66,
+        "NBINS": 14
       }
     }
   },
@@ -65,9 +65,9 @@
 
   "OPTIONS": {
     "overwrite": true,
-    "blindedPlots": ["Pass"],
-    "blindedFit": ["Pass"],
-    "plotPrefitSigInFitB": true,
+    "blindedPlots": [],
+    "blindedFit": [],
+    "plotPrefitSigInFitB": false,
     "plotUncerts": true,
     "plotTitles": false,
     "year": 2018

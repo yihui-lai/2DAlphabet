@@ -1,12 +1,12 @@
 {
-  "NAME": "VBFjjHi_Htoaato4b",
+  "NAME": "VBFjjIncl_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
       "SYSTEMATICS":[],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "ALIAS": "VBFjjHi_Data_2018",
+      "ALIAS": "VBFjjIncl_Data_2018",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
@@ -41,17 +41,17 @@
         "NAME": "mH",
         "TITLE": "m_{H} (GeV)",
         "MIN": 60,
-        "MAX": 220,
-        "NBINS": 16,
-        "SIGSTART": 100,
-        "SIGEND": 150
+        "MAX": 200,
+        "NBINS": 14,
+        "SIGSTART": 110,
+        "SIGEND": 140
       },
       "Y": {
         "NAME": "mA",
         "TITLE": "m_{a} (GeV)",
         "MIN": 10,
-        "MAX": 62,
-        "NBINS": 13
+        "MAX": 66,
+        "NBINS": 14
       }
     }
   },
