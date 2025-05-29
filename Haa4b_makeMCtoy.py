@@ -15,6 +15,8 @@ CATEGORY = str(sys.argv[1])  ## gg0lIncl/Hi/Lo, VBFjjIncl/Hi/Lo, LepHi/Lo
 NTOYS    = int(sys.argv[2])
 TOYSOURCE = str(sys.argv[3]) ## MC, Data, DataAndMC, None
 SMOOTH_CUT = 3.0  ## Largest allowed fluctation in smoothed background (in standard deviations)
+MASSESA = ['15','30','55']
+SIGINJ = [1, 2, 5, 10, 20, 50]  ## Signal to inject, in %
 YEAR = '2018'
 
 ## Set toy options
@@ -103,7 +105,8 @@ def round_bins(h_float, h_round):
     frac_err = h_remain.Integral() / h_float.Integral()
     rebin = 2
     while(abs(frac_err) > 0.01 and abs(h_remain.Integral()) > 1.5 and rebin <= np.floor(nX/2.0) and rebin <= np.floor(nY/2.0)):
-        print('\n%s off by factor of %.3f (%.1f events), will rebin by %d' % (h_round.GetName(), -1*frac_err, -1*h_remain.Integral(), rebin))
+        if VERBOSE or (not '_sigBr_' in h_float.GetName()):
+            print('\n%s off by factor of %.3f (%.1f events), will rebin by %d' % (h_round.GetName(), -1*frac_err, -1*h_remain.Integral(), rebin))
         ## Loop over "rebinned" bins
         for jX in range(1, int(np.ceil(1.0*nX/rebin))+1):
             for jY in range(1, int(np.ceil(1.0*nY/rebin))+1):
@@ -271,7 +274,7 @@ def get_bin_expectation(hist, iX, iY, eff_wgt=1.0):
 
 
 ## Function to generate toys
-def toys_generator(hist, nToy, output_dir, root_cmd):
+def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
     if VERBOSE: print('\ntoys_generator: Throwing %d toys from %s' % (nToy, hist.GetName()))
     str_repl = None
     for substr in ['_MCsmooth1_','_MCsmooth2_','_Data_']:
@@ -286,28 +289,60 @@ def toys_generator(hist, nToy, output_dir, root_cmd):
     avg_toy_hist = hist.Clone(hist.GetName().replace(str_repl, str_repl+'%dtoyAvg_' % nToy))
     avg_toy_hist.Scale(0)
     avg_toy_varSq = avg_toy_hist.Clone(avg_toy_hist.GetName().replace('toyAvg','toyVarSq'))
+    avg_toy_hist_sig = {}
+    for mA in h_sigs.keys():
+        for sInj in SIGINJ:
+            key = 'mA_%s_sigBr_%02d' % (mA, sInj)
+            avg_toy_hist_sig[key] = avg_toy_hist.Clone(avg_toy_hist.GetName().replace('toyAvg', 'toyAvg_%s' % key))
 
     ## Loop and generate the toys
     for iT in range(nToy):
         filename = hist.GetName().split("_pnet")[0].replace(str_repl, str_repl+'toy%d_' % iT)
         ## Create new ROOT file (root_cmd = "RECREATE"), or add to existing ("UPDATE")
         output_file = ROOT.TFile(output_dir+"/"+filename+".root", root_cmd)
+        out_file_sig = {}
+        for key in avg_toy_hist_sig.keys():
+            out_file_sig[key] = ROOT.TFile(output_file.GetName().replace('toy%d' % iT, 'toy%d_%s' % (iT, key)), root_cmd)
         if iT == 0:
             print('Writing toy #%d to %s' % (iT, output_dir+"/"+filename+".root"))
         if (iT % 100) == 0:
             print('  - Starting toy %d/%d' % (iT, nToy))
         toy_hist = hist.Clone(hist.GetName().replace(str_repl, str_repl+'toy%d_' % iT))
+        toy_hist_sig = {}
+        for key in avg_toy_hist_sig.keys():
+            toy_hist_sig[key] = toy_hist.Clone(toy_hist.GetName().replace('toy%d' % iT, 'toy%d_%s' % (iT, key)))
         for iX in range(1, hist.GetNbinsX()+1):
             for iY in range(1, hist.GetNbinsY()+1):
                 expected = hist.GetBinContent(iX,iY)
                 fluctuated = np.random.poisson(expected)
                 toy_hist.SetBinContent(iX,iY,fluctuated)
                 toy_hist.SetBinError(iX,iY,np.sqrt(fluctuated))
+                for key in toy_hist_sig.keys():
+                    mA = key[3:5]
+                    sBr = int(key[-2:])*0.01
+                    assert (mA in MASSESA and int(key[-2:]) in SIGINJ), 'Haa4b_makeMCtoy.py: mA = %s, sBr = %d' % (mA, sBr)
+                    exp_sig = expected + h_sigs[mA].GetBinContent(iX,iY)*sBr
+                    fluc_sig = np.random.poisson(exp_sig)
+                    toy_hist_sig[key].SetBinContent(iX,iY,fluc_sig)
+                    toy_hist_sig[key].SetBinError(iX,iY,np.sqrt(fluc_sig))
         avg_toy_hist.Add(toy_hist)
+        for key in toy_hist_sig.keys():
+            avg_toy_hist_sig[key].Add(toy_hist_sig[key])
+        output_file.cd()
         toy_hist.Write()
+        output_file.Write()
         output_file.Close()
+        for key in toy_hist_sig.keys():
+            out_file_sig[key].cd()
+            toy_hist_sig[key].Write()
+            out_file_sig[key].Write()
+            out_file_sig[key].Close()
+        del toy_hist
+        del toy_hist_sig
     ## End loop: for iT in range(nToy)
     avg_toy_hist.Scale(1.0/nToy)
+    for key in avg_toy_hist_sig.keys():
+        avg_toy_hist_sig[key].Scale(1.0/nToy)
 
     ## Store variance of toys w.r.t. average
     for jT in range(nToy):
@@ -327,10 +362,16 @@ def toys_generator(hist, nToy, output_dir, root_cmd):
     for iX in range(1,avg_toy_hist.GetNbinsX()+1):
         for iY in range(1,avg_toy_hist.GetNbinsY()+1):
             avg_toy_hist.SetBinError(iX,iY,np.sqrt(avg_toy_varSq.GetBinContent(iX,iY)))
+            for key in avg_toy_hist_sig.keys():
+                ## Estimate signal-injected uncertainty as sqrt(err^2 + avg(sig+bkg) - avg(bkg))
+                avg_toy_hist_sig[key].SetBinError(iX,iY,np.sqrt(max(0, avg_toy_varSq.GetBinContent(iX,iY) +
+                                                                    avg_toy_hist_sig[key].GetBinContent(iX,iY) -
+                                                                    avg_toy_hist.GetBinContent(iX,iY))))
 
-    return [avg_toy_hist, avg_toy_varSq]
-## End function: toys_generator(hist, nToy, output_dir, root_cmd)
-
+    avg_toy_hist_sig['bkg'] = avg_toy_hist
+    avg_toy_hist_sig['bkgVar'] = avg_toy_varSq
+    return avg_toy_hist_sig
+## End function: toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={})
 
 
 
@@ -353,10 +394,30 @@ for supr in ['gg0l','VBFjj']:
 samps = ['Data']
 if 'gg0l' in CATEGORY or 'VBFjj' in CATEGORY:
     samps.append('MC')  ## Background MC already summed
-if 'Lep' in CATEGORY:
+    sigs = ['ggH','VBFH','WH','ZH','ttH']
+    if 'VBFjj' in CATEGORY:
+        print('\nWARNING!!! Only VBFH signal available for VBFjj categories. Need to add others!!!\n')
+        sigs = ['VBFH']
+    for sig in sigs:
+        for mA in MASSESA:
+            samps.append(sig+'toaato4b_mA_'+str(mA))
+
+elif 'Lep' in CATEGORY:
     samps = samps+['Wlv','TT1l']
+    sigs  = ['WH','ttH']
     if CATEGORY == 'LepHi':
         samps = samps+['Zll','TT2l','ZZ']
+        sigs  = sigs+['ZH']
+    for sig in sigs:
+        for mA in MASSESA:
+            samps.append(sig+'toaato4b_mA_'+str(mA))
+
+else:
+    print('\nInvalid category %s!!! Quitting.' % CATEGORY)
+    sys.exit()
+
+print('\nIn Haa4b_makeMCtoy.py, looking for the following samples:')
+print(samps)
 
 base_pth = 'raw_inputs/2D_in_merged_%s/' % superCat
 
@@ -366,6 +427,11 @@ h_data_pass = None
 h_data_fail = None
 h_MC_pass = None
 h_MC_fail = None
+h_sig_pass = {}
+h_sig_fail = {}
+for mA in MASSESA:
+    h_sig_pass[mA] = None
+    h_sig_fail[mA] = None
 
 ## Loop over samples to get pass / fail histograms
 for samp in samps:
@@ -375,8 +441,30 @@ for samp in samps:
     pass_name = hname+'_Pass_Nom'
     fail_name = hname+'_Fail_Nom'
     in_file = ROOT.TFile.Open(filepath)
-    print(filepath)
-    print(pass_name)
+
+    ## Store signal histograms
+    isSignal = False
+    for mA in MASSESA:
+        if 'Htoaato4b_mA_'+mA in filepath:
+            isSignal = True
+            if h_sig_pass[mA] == None:
+                h_sig_pass[mA] = in_file.Get(pass_name)
+                h_sig_fail[mA] = in_file.Get(fail_name)
+                h_sig_pass[mA].SetDirectory(0)
+                h_sig_fail[mA].SetDirectory(0)
+                for sig in ['ggH','VBFH','WH','ZH','ttH']:
+                    h_sig_pass[mA].SetName(h_sig_pass[mA].GetName().replace(sig+'toaa','Htoaa'))
+                    h_sig_fail[mA].SetName(h_sig_fail[mA].GetName().replace(sig+'toaa','Htoaa'))
+                if VERBOSE: print('  * Creating %s from %s (integral = %.1f)' % (h_sig_pass[mA].GetName(), pass_name, h_sig_pass[mA].Integral()))
+            else:
+                h_sig_pass[mA].Add(in_file.Get(pass_name))
+                h_sig_fail[mA].Add(in_file.Get(fail_name))
+                if VERBOSE: print('  * Adding %s to %s (new integral = %.1f)' % (pass_name, h_sig_pass[mA].GetName(), h_sig_pass[mA].Integral()))
+        ## End conditional: if 'Htoaato4b_mA_'+mA in filepath
+    ## End loop: for mA in MASSESA
+    if isSignal:
+        continue
+
     h_in_pass = in_file.Get(pass_name)
     h_in_fail = in_file.Get(fail_name)
 
@@ -431,12 +519,15 @@ h_MC_pass = reset_bin_errors(h_MC_pass, h_MC_pass, eff_wgt_pass)
 h_MC_fail = reset_bin_errors(h_MC_fail, h_MC_fail, eff_wgt_fail)
 
 
-## Write h_MC_pass and h_MC_fail, without smoothing, to ROOT file
+## Write h_MC_pass and h_MC_fail and signal, without smoothing, to ROOT file
 out_file_dataMC = ROOT.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CATEGORY, CATEGORY, TOYSOURCE, NTOYS), 'RECREATE')
 h_data_pass.Write()
 h_data_fail.Write()
 h_MC_pass.Write()
 h_MC_fail.Write()
+for mA in h_sig_pass.keys():
+    h_sig_pass[mA].Write()
+    h_sig_fail[mA].Write()
 out_file_dataMC.Write()
 out_file_dataMC.Close()
 
@@ -504,19 +595,17 @@ h_MCrounded_pass = h_MCsmooth2_pass.Clone(h_MCsmooth2_pass.GetName().replace('sm
 h_MCrounded_fail = h_MCsmooth2_fail.Clone(h_MCsmooth2_fail.GetName().replace('smooth2','rounded'))
 h_MCrounded_pass = round_bins(h_MCsmooth2_pass, h_MCrounded_pass)
 h_MCrounded_fail = round_bins(h_MCsmooth2_fail, h_MCrounded_fail)
-
-
-## Generate toys, get average toy occupancy and variance
-avg_toyMC_pass = None
-avg_toyMC_fail = None
-avg_toyData_pass = None
-avg_toyData_fail = None
-if doToysMC:
-    avg_toyMC_pass = toys_generator(h_MCsmooth2_pass, NTOYS, 'plots/'+CATEGORY, "RECREATE")
-    avg_toyMC_fail = toys_generator(h_MCsmooth2_fail, NTOYS, 'plots/'+CATEGORY, "UPDATE")
-if doToysData:
-    avg_toyData_pass = toys_generator(h_data_pass, NTOYS, 'plots/'+CATEGORY, "RECREATE")
-    avg_toyData_fail = toys_generator(h_data_fail, NTOYS, 'plots/'+CATEGORY, "UPDATE")
+h_MCrounded_sig_pass = {}
+h_MCrounded_sig_fail = {}
+for mA in h_sig_pass.keys():
+    for sInj in SIGINJ:
+        key = 'mA_%s_sigBr_%02d' % (mA, sInj)
+        h_MCrounded_sig_pass[key] = h_MCsmooth2_pass.Clone(h_MCsmooth2_pass.GetName().replace('smooth2','rounded_'+key))
+        h_MCrounded_sig_fail[key] = h_MCsmooth2_fail.Clone(h_MCsmooth2_fail.GetName().replace('smooth2','rounded_'+key))
+        h_MCrounded_sig_pass[key].Add(h_sig_pass[mA], sInj*0.01)
+        h_MCrounded_sig_fail[key].Add(h_sig_fail[mA], sInj*0.01)
+        h_MCrounded_sig_pass[key] = round_bins(h_MCrounded_sig_pass[key].Clone(key+'_pass_tmp'), h_MCrounded_sig_pass[key])
+        h_MCrounded_sig_fail[key] = round_bins(h_MCrounded_sig_fail[key].Clone(key+'_fail_tmp'), h_MCrounded_sig_fail[key])
 
 ## Write rounded MC to its own "toy" file
 out_MCr_name = h_MCrounded_pass.GetName().split("_pnet")[0]
@@ -525,6 +614,26 @@ h_MCrounded_pass.Write()
 h_MCrounded_fail.Write()
 out_fileMCr.Write()
 out_fileMCr.Close()
+out_fileMCr_sig = {}
+for key in h_MCrounded_sig_pass.keys():
+    out_fileMCr_sig[key] = ROOT.TFile(out_fileMCr.GetName().replace('rounded','rounded_'+key), 'RECREATE')
+    h_MCrounded_sig_pass[key].Write()
+    h_MCrounded_sig_fail[key].Write()
+    out_fileMCr_sig[key].Write()
+    out_fileMCr_sig[key].Close()
+
+
+## Generate toys, get average toy occupancy and variance
+avg_toyMC_pass = None
+avg_toyMC_fail = None
+avg_toyData_pass = None
+avg_toyData_fail = None
+if doToysMC:
+    avg_toyMC_pass = toys_generator(h_MCsmooth2_pass, NTOYS, 'plots/'+CATEGORY, "RECREATE", h_sig_pass)
+    avg_toyMC_fail = toys_generator(h_MCsmooth2_fail, NTOYS, 'plots/'+CATEGORY, "UPDATE", h_sig_fail)
+if doToysData:
+    avg_toyData_pass = toys_generator(h_data_pass, NTOYS, 'plots/'+CATEGORY, "RECREATE", h_sig_pass)
+    avg_toyData_fail = toys_generator(h_data_fail, NTOYS, 'plots/'+CATEGORY, "UPDATE", h_sig_fail)
 
 
 ## Write h_MC_pass and h_MC_fail and average toy histograms to ROOT file
@@ -533,11 +642,11 @@ wrt_hists = [[h_MCsmooth1_pass, h_MCsmooth1_fail],
              [h_MCsmooth2_pass, h_MCsmooth2_fail],
              [h_MCrounded_pass, h_MCrounded_fail]]
 if doToysMC:
-    wrt_hists += [[avg_toyMC_pass[0], avg_toyMC_fail[0]],
-                  [avg_toyMC_pass[1], avg_toyMC_fail[1]]]
+    for key in avg_toyMC_pass.keys():
+        wrt_hists += [[avg_toyMC_pass[key], avg_toyMC_fail[key]]]
 if doToysData:
-    wrt_hists += [[avg_toyData_pass[0], avg_toyData_fail[0]],
-                  [avg_toyData_pass[1], avg_toyData_fail[1]]]
+    for key in avg_toyData_pass.keys():
+        wrt_hists += [[avg_toyData_pass[key], avg_toyData_fail[key]]]
 
 for wrt_hist in wrt_hists:
     if VERBOSE: print('\nIn Haa4b_makeMCtoy_ggH.py, writing %s (and "fail")' % wrt_hist[0].GetName())
@@ -582,36 +691,48 @@ os.system("mkdir -p "+jData_dir)
 
 ## Write JSON for rounded MC template
 print('\nWriting '+jMC_dir+'/'+CATEGORY+'_Htoaato4b_MCrounded.json')
-with open('%s_Htoaato4b.json' % CATEGORY, 'r') as jf:
+with open('jsons/%s_Htoaato4b_MC.json' % CATEGORY, 'r') as jf:
     jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
 jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCrounded_'+YEAR
 with open(jMC_dir+'/'+CATEGORY+'_Htoaato4b_MCrounded.json', 'w') as jf:
-    json.dump(jsonMC, jf, indent=4)
+    json.dump(jsonMC, jf, indent=2)
+for key in h_MCrounded_sig_pass.keys():
+    jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCrounded_'+key+'_'+YEAR
+    with open(jMC_dir+'/'+CATEGORY+'_Htoaato4b_MCrounded_'+key+'.json', 'w') as jf:
+        json.dump(jsonMC, jf, indent=2)
 ## Write JSON for rounded data
 print('Writing '+jData_dir+'/'+CATEGORY+'_Htoaato4b_Data.json')
-with open('%s_Htoaato4b.json' % CATEGORY, 'r') as jf:
+with open('jsons/%s_Htoaato4b_Data.json' % CATEGORY, 'r') as jf:
     jsonData = json.load(jf)  # `data` is now a Python dictionary or list
 jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_'+YEAR
 with open(jData_dir+'/'+CATEGORY+'_Htoaato4b_Data.json', 'w') as jf:
-    json.dump(jsonData, jf, indent=4)
+    json.dump(jsonData, jf, indent=2)
 
 
 if doToysMC:
     print('\nWriting '+str(NTOYS)+' MC toys to '+jMC_dir+'/')
     for iToy in range(NTOYS):
-        with open('%s_Htoaato4b.json' % CATEGORY, 'r') as jf:
+        with open('jsons/%s_Htoaato4b_MC.json' % CATEGORY, 'r') as jf:
             jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
         jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCsmooth2_toy'+str(iToy)+'_'+YEAR
         with open(jMC_dir+'/'+CATEGORY+'_Htoaato4b_mctoy'+str(iToy)+'.json', 'w') as jf:
-            json.dump(jsonMC, jf, indent=4)
+            json.dump(jsonMC, jf, indent=2)
+        for key in h_MCrounded_sig_pass.keys():
+            jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCsmooth2_toy'+str(iToy)+'_'+key+'_'+YEAR
+            with open(jMC_dir+'/'+CATEGORY+'_Htoaato4b_mctoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
+                json.dump(jsonMC, jf, indent=2)
 
 if doToysData:
     print('\nWriting '+str(NTOYS)+' data toys to '+jData_dir+'/')
     for jToy in range(NTOYS):
-        with open('%s_Htoaato4b.json' % CATEGORY, 'r') as jf:
+        with open('jsons/%s_Htoaato4b_Data.json' % CATEGORY, 'r') as jf:
             jsonData = json.load(jf)  # `data` is now a Python dictionary or list
         jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_toy'+str(jToy)+'_'+YEAR
         with open(jData_dir+'/'+CATEGORY+'_Htoaato4b_datatoy'+str(jToy)+'.json', 'w') as jf:
-            json.dump(jsonData, jf, indent=4)
+            json.dump(jsonData, jf, indent=2)
+        for key in h_MCrounded_sig_pass.keys():
+            jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_toy'+str(iToy)+'_'+key+'_'+YEAR
+            with open(jData_dir+'/'+CATEGORY+'_Htoaato4b_datatoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
+                json.dump(jsonData, jf, indent=2)
 
 print('\n\nALL DONE with Haa4b_makeMCtoy.py!!!\n\n')
