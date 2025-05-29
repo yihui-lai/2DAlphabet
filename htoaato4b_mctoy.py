@@ -23,7 +23,7 @@ NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
 #CAT     = 'gg0lHi' ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
 CAT = sys.argv[2]
 TOYSOURCE = str(sys.argv[3]) ## MC, Data
-SIGINJ = '' if len(sys.argv) < 5 else str(sys.argv[4])  ## mA_XX_sigBr_YY
+SIGINJ = '' if len(sys.argv) < 5 else str(sys.argv[4])  ## mA_XX_sigBr_YYY
 OUT_DIR = 'output'
 CARD_ONLY = True  ## Just generate cards, don't do any fits, plots, etc.
 
@@ -49,7 +49,8 @@ AB_DIR = '/afs/cern.ch/work/a/abrinke1/public/HiggsToAA/coffea/eventloop/plots/'
 
 if CAT.startswith('gg0l'):
     SIGS    = ['ggH', 'WH','ttH','ZH', 'VBFH']
-    FITLIST = ['0x0smr','1x1C']
+    #FITLIST = ['0x0smr','1d1C','1x1C']
+    FITLIST = ['1x1C']
     NOMTF   = 0.06
     WP      = 'WP40'    ## Hto4b efficiency working point
 if CAT.startswith('VBFjj'):
@@ -64,6 +65,7 @@ if CAT.startswith('Vjj'):
     NOMTF   = (0.15 if WP == 'WP40' else 0.22)
 if CAT == 'LepHi':  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
     SIGS    = ['WH','ttH','ZH']
+    #FITLIST = ['0x0','0x0smr','1d1C']
     FITLIST = ['0x0']
     WP      = 'WP60'    ## Hto4b efficiency working point
     NOMTF   = 0.11
@@ -646,10 +648,10 @@ if __name__ == '__main__':
         test_make('SR', fitN)         ## Generate histograms Generic2D objects, including transfer functions
     for fitN in FITLIST:
         test_make_card('SR', fitN)    ## Generate datacards
-    for fitN in FITLIST:
-        test_fit('SR', fitN)          ## Perform fits to data with models
     if CARD_ONLY:
         exit()
+    for fitN in FITLIST:
+        test_fit('SR', fitN)          ## Perform fits to data with models
     for fitN in FITLIST:
         test_plot('SR', fitN)         ## Plot data vs. prediction, pre-fit and post-fit
     for fitN in FITLIST:
