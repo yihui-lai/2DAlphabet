@@ -474,20 +474,21 @@ class BinnedDistribution(Generic2D):
         for cat in _subspace:
             cat_name = name+'_'+cat
             cat_hist = copy_hist_with_new_bins(cat_name,'X',inhist,self.binning.xbinByCat[cat])
+            print('\nFilling BinnedDistribution for %s (%dx%d, %d entries)' % (cat_hist.GetName(), cat_hist.GetNbinsX(), cat_hist.GetNbinsY(), cat_hist.Integral()))
             for ybin in range(1,cat_hist.GetNbinsY()+1):
                 for xbin in range(1,cat_hist.GetNbinsX()+1):
                     bin_name = '%s_bin_%s-%s'%(cat_name,xbin,ybin)
-                    nzeros = self._nSurroundingZeros(cat_hist,xbin,ybin)
-                    if constant or nzeros > 7:
-                        if verbose: print('\n%d surrounding zeros for (%d, %d), fix to 1e-9' % (nzeros, xbin, ybin))
-                        self.binVars[bin_name] = RooConstVar(bin_name, bin_name, cat_hist.GetBinContent(xbin,ybin))
-                    else:
-                        bin_val = cat_hist.GetBinContent(xbin,ybin)
-                        if verbose and bin_val < 5: print('\nBin (%d, %d) has %d entries, set to 5' % (bin_val, xbin, ybin))
-                        self.binVars[bin_name] = RooRealVar(bin_name, bin_name, max(5,bin_val), 1e-6, 1e6)
-                        self.nuisances.append({'name':bin_name, 'constraint':'flatParam', 'obj': self.binVars[bin_name]})
-                    self._varStorage.append(self.binVars[bin_name]) # For safety if we add shape templates            
-                     
+                    # nzeros = self._nSurroundingZeros(cat_hist,xbin,ybin)
+                    # if constant or nzeros > 7:
+                    #     if verbose: print('\n%d surrounding zeros for (%d, %d), fix to 1e-9' % (nzeros, xbin, ybin))
+                    #     self.binVars[bin_name] = RooConstVar(bin_name, bin_name, cat_hist.GetBinContent(xbin,ybin))
+                    # else:
+                    bin_val = cat_hist.GetBinContent(xbin,ybin)
+                    if verbose and bin_val < 1: print('\nBin (%d, %d) has %d entries, set to 1' % (xbin, ybin, bin_val))
+                    self.binVars[bin_name] = RooRealVar(bin_name, bin_name, max(1.0, bin_val), 1e-6, 1e6)
+                    self.nuisances.append({'name':bin_name, 'constraint':'flatParam', 'obj': self.binVars[bin_name]})
+                    self._varStorage.append(self.binVars[bin_name]) # For safety if we add shape templates
+
     def AddShapeTemplates(self,nuis_name,up_shape,down_shape,constraint="param 1 0"):
         '''Add variation shape templates that are used to create a map between
         a new nuisance parameter (named `nuis_name`) and the values for a given bin.
