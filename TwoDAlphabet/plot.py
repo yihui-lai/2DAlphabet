@@ -719,6 +719,21 @@ def make_pad_1D(outname, data, bkgs=[], signals=[], title='', subtitle='',
         sub_pad.cd()
         pull = _make_pull_plot(data, totalBkg, preVsPost) # If plotting pre vs postfit dists, ensure the Y axis of pull plot reflects this
         pull.Draw('hist')
+
+        pull_chi2 = 0
+        for iBin in range(1,pull.GetNbinsX()+1):
+            pull_chi2 += pow(pull.GetBinContent(iBin),2)
+        pull_chi2 /= pull.GetNbinsX()
+
+        pull_tex = ROOT.TLatex()
+        pull_tex.SetNDC()
+        pull_tex.SetTextAngle(0)
+        pull_tex.SetTextColor(ROOT.kBlack)
+        pull_tex.SetTextFont(42)
+        pull_tex.SetTextAlign(12)
+        pull_tex.SetTextSize(0.12)
+        pull_tex.DrawLatex(0.48,0.90,'#chi^2 = %.3f' % pull_chi2)
+
         pad.cd()
     
     ROOT.SetOwnership(pad, False)
