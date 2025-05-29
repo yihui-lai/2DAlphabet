@@ -380,6 +380,9 @@ class OrganizedHists():
         Returns:
             None
         '''
+        ## Save "data" sideband histogram to help signal-zeroing logic
+        h_data_fail = None
+        ## Loop over all histograms
         for infilename,histdf in self.hist_map.items():
             infile = ROOT.TFile.Open(infilename)
             for row in histdf.itertuples():
@@ -399,22 +402,48 @@ class OrganizedHists():
 
                 h.SetTitle(row.out_histname)
                 h.SetFillColor(row.color)
+                if '_Data' in infilename or '_MC' in infilename or '_toy' in infilename:
+                    if '_Fail' in row.source_histname:
+                        if h_data_fail == None:
+                            print('%s from %s will be treated as "data"' % (row.source_histname, infilename))
+                            h_data_fail = h.Clone('h_data_fail_%s' % row.source_histname)
+                            h_data_fail.SetDirectory(0)
+                        else:
+                            raise RuntimeError('Found %s, but %s already exists!!! Quitting.' % (row.source_histname, h_data_fail.GetName()))
 
                 ## Set low-occupancy signal bins to 0 to avoid fit issues in empty data bins - AWB 2024.05.21
                 if trimSig and 'Htoaato4b_mA' in row.out_histname:
+                    if h_data_fail == None:
+                        raise RuntimeError('No h_data_fail while massaging signal!!! Quitting.')
                     max_occ = h.GetMaximum()
                     for iX in range(1, h.GetNbinsX()+1):
                         for iY in range(1, h.GetNbinsY()+1):
-                            bin_occ = h.GetBinContent(iX, iY)
-                            if bin_occ < 0.05*max_occ:
-                                print('Signal bin (%d,%d) = %.2f (max = %.2f), set to 0.' % (iX, iY, bin_occ, max_occ))
-                                h.SetBinContent(iX, iY, 0)
-                                h.SetBinError(iX, iY, 0)
+                            bin_occ = h.GetBinContent(iX,iY)
+                            if bin_occ < 0.02*max_occ:
+                                h.SetBinContent(iX,iY, 0.0)
+                                h.SetBinError(iX,iY, 0.0)
+                            elif bin_occ < 0.10*max_occ and h_data_fail.GetBinContent(iX,iY) < 0.999:
+                                print('Signal bin (%d,%d) = %.2f (max = %.2f), data_fail = %.2f: set signal to 0.' % (iX,iY, bin_occ, max_occ, h_data_fail.GetBinContent(iX,iY)))
+                            elif bin_occ > 0.40*max_occ and h_data_fail.GetBinContent(iX,iY) < 0.999:
+                                print('\n\nERROR!!! Major problem!!! Signal %s has %.3f out of %.3f events in bin, while "data" fail %s has %.3f.' % (h.GetName(), h.GetBinContent(iX,iY), h.Integral(), h_data_fail.GetName().replace('h_data_fail_',''), h_data_fail.GetBinContent(iX,iY)))
+                                print('Bin (%d,%d) = (%.2f,%.2f)' % (iX, iY, h.GetXaxis().GetBinCenter(iX), h.GetXaxis().GetBinCenter(iY)))
+                                raise RuntimeError('Could lead to negative predictions. Pre-emptively quitting. (See config.py)')
+                            elif h_data_fail.GetBinContent(iX,iY) < 0.999:
+                                print('\n\nWARNING!!! Major problem!!! Signal %s has %.3f out of %.3f events in bin, while "data" fail %s has %.3f.' % (h.GetName(), h.GetBinContent(iX,iY), h.Integral(), h_data_fail.GetName().replace('h_data_fail_',''), h_data_fail.GetBinContent(iX,iY)))
+                                print('Bin (%d,%d) = (%.2f,%.2f)' % (iX, iY, h.GetXaxis().GetBinCenter(iX), h.GetXaxis().GetBinCenter(iY)))
+                                print('Could lead to negative predictions. (See config.py)\n')
+                        ## End loop: for iY in range(1, h.GetNbinsY()+1)
+                    ## End loop: for iX in range(1, h.GetNbinsX()+1)
+                ## End conditional: if trimSig and 'Htoaato4b_mA' in row.out_histname
 
                 self.file.WriteTObject(h, row.out_histname)
                 self.CreateSubRegions(h, binning)
 
+            ## End loop: for row in histdf.itertuples():
             infile.Close()
+        ## End loop: for infilename,histdf in self.hist_map.items()
+        del h_data_fail
+    ## End function: Add(self, binnings, trimSig=False)
 
     def Get(self,histname='',process='',region='',systematic='',subspace='FULL'):
         '''Get histogram from the opened TFile. Specify the histogram
