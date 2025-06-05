@@ -478,15 +478,25 @@ class BinnedDistribution(Generic2D):
             for ybin in range(1,cat_hist.GetNbinsY()+1):
                 for xbin in range(1,cat_hist.GetNbinsX()+1):
                     bin_name = '%s_bin_%s-%s'%(cat_name,xbin,ybin)
+                    # ## Old implementation: fix "Fail" bins with 0 entries and surrounded by 0s to 0
                     # nzeros = self._nSurroundingZeros(cat_hist,xbin,ybin)
                     # if constant or nzeros > 7:
                     #     if verbose: print('\n%d surrounding zeros for (%d, %d), fix to 1e-9' % (nzeros, xbin, ybin))
                     #     self.binVars[bin_name] = RooConstVar(bin_name, bin_name, cat_hist.GetBinContent(xbin,ybin))
                     # else:
+                    # ## Old implementation: simple flat param for yield in each background bin, bounded to be > 0
+                    # self.binVars[bin_name] = RooRealVar(bin_name, bin_name, max(1.0, bin_val), 1e-6, 1e6)
+                    # self.nuisances.append({'name':bin_name, 'constraint':'flatParam', 'obj': self.binVars[bin_name]})
+                    ## New implementation: yield is data yield (min of 1) multiplied by an exponential, so non-negative
                     bin_val = cat_hist.GetBinContent(xbin,ybin)
                     if verbose and bin_val < 1: print('\nBin (%d, %d) has %d entries, set to 1' % (xbin, ybin, bin_val))
-                    self.binVars[bin_name] = RooRealVar(bin_name, bin_name, max(1.0, bin_val), 1e-6, 1e6)
-                    self.nuisances.append({'name':bin_name, 'constraint':'flatParam', 'obj': self.binVars[bin_name]})
+                    form = '%d.0*exp(@0)' % max(1, bin_val)
+                    bin_par = bin_name+'_par0'
+                    ## Construct a scaling nuisance parameter with default value exp(0) = 1.0
+                    bin_nuis = RooRealVar(bin_par, bin_par, 0.0, -20.0, 10.0)
+                    bin_nuis.setError(3.0)  ## Factor of 20 up or down
+                    self.binVars[bin_name] = RooFormulaVar(bin_name, bin_name, form, RooArgList(bin_nuis))
+                    self.nuisances.append({'name':bin_par, 'constraint':'flatParam', 'obj': bin_nuis})
                     self._varStorage.append(self.binVars[bin_name]) # For safety if we add shape templates
 
     def AddShapeTemplates(self,nuis_name,up_shape,down_shape,constraint="param 1 0"):
