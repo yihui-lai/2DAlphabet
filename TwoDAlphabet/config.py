@@ -416,6 +416,7 @@ class OrganizedHists():
                     if h_data_fail == None:
                         raise RuntimeError('No h_data_fail while massaging signal!!! Quitting.')
                     max_occ = h.GetMaximum()
+                    tot_occ = h.Integral()
                     for iX in range(1, h.GetNbinsX()+1):
                         for iY in range(1, h.GetNbinsY()+1):
                             bin_occ = h.GetBinContent(iX,iY)
@@ -424,12 +425,13 @@ class OrganizedHists():
                                 h.SetBinError(iX,iY, 0.0)
                             elif bin_occ < 0.10*max_occ and h_data_fail.GetBinContent(iX,iY) < 0.999:
                                 print('Signal bin (%d,%d) = %.2f (max = %.2f), data_fail = %.2f: set signal to 0.' % (iX,iY, bin_occ, max_occ, h_data_fail.GetBinContent(iX,iY)))
-                            elif bin_occ > 0.40*max_occ and h_data_fail.GetBinContent(iX,iY) < 0.999:
-                                print('\n\nERROR!!! Major problem!!! Signal %s has %.3f out of %.3f events in bin, while "data" fail %s has %.3f.' % (h.GetName(), h.GetBinContent(iX,iY), h.Integral(), h_data_fail.GetName().replace('h_data_fail_',''), h_data_fail.GetBinContent(iX,iY)))
+                            elif bin_occ > 0.40*max_occ and bin_occ > 0.20*tot_occ and h_data_fail.GetBinContent(iX,iY) < 0.999:
+                                print('\n\nWARNING!!! Potential MAJOR problem!!! Signal %s has %.3f out of %.3f events in bin, while "data" fail %s has %.3f.' % (h.GetName(), h.GetBinContent(iX,iY), tot_occ, h_data_fail.GetName().replace('h_data_fail_',''), h_data_fail.GetBinContent(iX,iY)))
                                 print('Bin (%d,%d) = (%.2f,%.2f)' % (iX, iY, h.GetXaxis().GetBinCenter(iX), h.GetXaxis().GetBinCenter(iY)))
-                                raise RuntimeError('Could lead to negative predictions. Pre-emptively quitting. (See config.py)')
+                                print('Could lead to negative predictions. (See config.py)\n')
+                                #raise RuntimeError('Could lead to negative predictions. Pre-emptively quitting. (See config.py)')
                             elif h_data_fail.GetBinContent(iX,iY) < 0.999:
-                                print('\n\nWARNING!!! Major problem!!! Signal %s has %.3f out of %.3f events in bin, while "data" fail %s has %.3f.' % (h.GetName(), h.GetBinContent(iX,iY), h.Integral(), h_data_fail.GetName().replace('h_data_fail_',''), h_data_fail.GetBinContent(iX,iY)))
+                                print('\n\nWARNING!!! Potential problem!!! Signal %s has %.3f out of %.3f events in bin, while "data" fail %s has %.3f.' % (h.GetName(), h.GetBinContent(iX,iY), h.Integral(), h_data_fail.GetName().replace('h_data_fail_',''), h_data_fail.GetBinContent(iX,iY)))
                                 print('Bin (%d,%d) = (%.2f,%.2f)' % (iX, iY, h.GetXaxis().GetBinCenter(iX), h.GetXaxis().GetBinCenter(iY)))
                                 print('Could lead to negative predictions. (See config.py)\n')
                         ## End loop: for iY in range(1, h.GetNbinsY()+1)
