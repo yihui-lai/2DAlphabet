@@ -13,8 +13,8 @@ R.gROOT.SetBatch(True)
 VERBOSE  = False
 VVERBOSE = False
 VVVERBOSE = False
-CATEGORY = str(sys.argv[1])  ## gg0lIncl/Hi/Lo, VBFjjIncl/Hi/Lo, LepHi/Lo
-CATL = CATEGORY  ## Modified category name
+CAT = str(sys.argv[1])  ## gg0lIncl/Hi/Lo, VBFjjIncl/Hi/Lo, LepHi/Lo
+CATL = CAT  ## Modified category name
 NTOYS    = int(sys.argv[2])
 TOYSOURCE = str(sys.argv[3]) ## MC, Data, DataAndMC, None
 SMOOTH_CUT = 3.0  ## Largest allowed fluctation in smoothed background (in standard deviations)
@@ -23,8 +23,8 @@ SIGINJ = {'15':[5, 10, 20, 50],
           '30':[10, 20, 50, 100],
           '55':[10, 20, 50, 100, 200]}  ## Signal to inject, in 1/1000ths
 YEAR = '2018'
-PLOT_DIR = 'plots/'+CATEGORY+'/toys'
-JSON_DIR = 'jsons/toys/'+CATEGORY
+PLOT_DIR = 'plots/'+CAT+'/toys'
+JSON_DIR = 'jsons/toys/'+CAT
 
 ## Set toy options
 doToysMC   = (TOYSOURCE == 'MC' or TOYSOURCE == 'DataAndMC')
@@ -33,8 +33,8 @@ if not (doToysMC or doToysData or TOYSOURCE == 'None'):
     print('\n\nHaa4b_makeMCtoy.py bad option! TOYSOURCE = %s. Quitting.\n')
     sys.exit()
 ## Check for output directory
-if not os.path.exists('plots/'+CATEGORY):
-    print('\n\n\nHaa4b_makeMCtoy.py error! plots/'+CATEGORY+' does not exist. Run merge_file_script_mctoy.py first.\n')
+if not os.path.exists('plots/'+CAT):
+    print('\n\n\nHaa4b_makeMCtoy.py error! plots/'+CAT+' does not exist. Run merge_file_script_mctoy.py first.\n')
     sys.exit()
 ## Make sub-directories for output toy ROOT and JSON files
 if not os.path.exists(PLOT_DIR):
@@ -391,51 +391,51 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
 ## Main body of code
 ####################
 
-print("Running Haa4b_makeMCtoy.py for the following category:", CATEGORY)
+print("Running Haa4b_makeMCtoy.py for the following category:", CAT)
 
 ## "Super-category" defines some directory / file names
-superCat = CATEGORY
+superCat = CAT
 ## Most categories used WP60, a couple use WP60
 WP = 'WP60'
 for supr in ['gg0l','VBFjj']:
-    if supr in CATEGORY:
+    if supr in CAT:
         superCat = supr
         WP = 'WP40'
 
 ## Different categories use different sets of background samples
 samps = ['Data']
-if CATEGORY.startswith('gg0l') or CATEGORY.startswith('VBFjj'):
+if CAT.startswith('gg0l') or CAT.startswith('VBFjj'):
     samps.append('MC')  ## Background MC already summed
     sigs = ['ggH','VBFH','WH','ZH','ttH']
-    if 'VBFjj' in CATEGORY:
+    if 'VBFjj' in CAT:
         print('\nWARNING!!! Only VBFH signal available for VBFjj categories. Need to add others!!!\n')
         sigs = ['VBFH']
     for sig in sigs:
         for mA in MASSESA:
             samps.append(sig+'toaato4b_mA_'+str(mA))
 
-elif CATEGORY.startswith('Lep'):
-    CATL = CATEGORY[0:5]  ## i.e. LepHi or LepLo
+elif CAT.startswith('Lep'):
+    CATL = CAT[0:5]  ## i.e. LepHi or LepLo
     if CATL.endswith('In'):
         CATL = 'LepIncl'
     samps = samps+['Wlv','TT1l']
     sigs  = ['WH','ttH']
-    if CATEGORY.startswith('LepHi') or CATEGORY.startswith('LepIncl'):
+    if CAT.startswith('LepHi') or CAT.startswith('LepIncl'):
         samps = samps+['Zll','TT2l','ZZ']
         sigs  = sigs+['ZH']  ## Temporary until all signals are included in all modes
-    if CATEGORY == 'LepLoA':
+    if CAT == 'LepLoA':
         sigs.remove('WH')  ## Temporary until all signals are included in all modes
-    if CATEGORY == 'LepLoB':
+    if CAT == 'LepLoB':
         sigs.remove('ttH')  ## Temporary until all signals are included in all modes
-    if CATEGORY == 'LepHiC':
+    if CAT == 'LepHiC':
         sigs.remove('WH')  ## Temporary until all signals are included in all modes
-    if CATEGORY == 'LepLoE':
+    if CAT == 'LepLoE':
         samps = samps+['TT2l']  ## Temporary until TT2l background is included in 1l categories
-    if CATEGORY == 'LepHiF':
+    if CAT == 'LepHiF':
         sigs.remove('ZH')  ## Temporary until all signals are included in all modes
         samps.remove('Zll')
         samps.remove('ZZ')
-    if CATEGORY == 'LepLoF':
+    if CAT == 'LepLoF':
         sigs.append('ZH')  ## Temporary until all signals are included in all modes
         samps = samps+['Zll','ZZ']  ## Temporary until Zll and ZZ backgrounds are included in 1l categories
     for sig in sigs:
@@ -443,7 +443,7 @@ elif CATEGORY.startswith('Lep'):
             samps.append(sig+'toaato4b_mA_'+str(mA))
 
 else:
-    print('\nInvalid category %s!!! Quitting.' % CATEGORY)
+    print('\nInvalid category %s!!! Quitting.' % CAT)
     sys.exit()
 
 print('\nIn Haa4b_makeMCtoy.py, looking for the following samples:')
@@ -467,7 +467,7 @@ for mA in MASSESA:
 for samp in samps:
     filepath = base_pth+superCat+'_'+samp+'_'+YEAR+'.root'
     print(f"add {filepath}")
-    hname = CATEGORY+'_'+samp+'_'+YEAR+'_pnet_'+WP
+    hname = CAT+'_'+samp+'_'+YEAR+'_pnet_'+WP
     pass_name = hname+'_Pass_Nom'
     fail_name = hname+'_Fail_Nom'
     in_file = R.TFile.Open(filepath)
@@ -499,7 +499,7 @@ for samp in samps:
     h_in_fail = in_file.Get(fail_name)
 
     ## For gg0l, scale background MC WP60 --> WP40
-    if 'gg0l' in CATEGORY and samp != 'Data' and not 'Htoaato4b' in samp:
+    if 'gg0l' in CAT and samp != 'Data' and not 'Htoaato4b' in samp:
         h_in_pass_WP60 = in_file.Get(pass_name.replace('WP40','WP60'))
         h_in_fail_WP60 = in_file.Get(fail_name.replace('WP40','WP60'))
         WP40_yield_pass = h_in_pass.Integral()
@@ -514,7 +514,7 @@ for samp in samps:
         print('Scaling %s by %.3f from %.1f to %.1f' % (h_in_fail.GetName(), fail_SF, h_in_fail_WP60.Integral(), WP40_yield_fail))
         h_in_pass.Scale(pass_SF)
         h_in_fail.Scale(fail_SF)
-    ## End conditional: if 'gg0l' in CATEGORY and samp != 'Data' and not 'Htoaato4b' in samp
+    ## End conditional: if 'gg0l' in CAT and samp != 'Data' and not 'Htoaato4b' in samp
 
     ## Get the input histograms, sum background MC
     if samp == 'Data':
@@ -550,7 +550,7 @@ h_MC_fail = reset_bin_errors(h_MC_fail, h_MC_fail, eff_wgt_fail)
 
 
 ## Write h_MC_pass and h_MC_fail and signal, without smoothing, to ROOT file
-out_file_dataMC = R.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CATEGORY, CATEGORY, TOYSOURCE, NTOYS), 'RECREATE')
+out_file_dataMC = R.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CAT, CAT, TOYSOURCE, NTOYS), 'RECREATE')
 h_data_pass.Write()
 h_data_fail.Write()
 h_MC_pass.Write()
@@ -639,7 +639,7 @@ for mA in h_sig_pass.keys():
 
 ## Write rounded MC to its own "toy" file
 out_MCr_name = h_MCrounded_pass.GetName().split("_pnet")[0]
-out_fileMCr = R.TFile('plots/'+CATEGORY+'/'+out_MCr_name+'.root', 'RECREATE')
+out_fileMCr = R.TFile('plots/'+CAT+'/'+out_MCr_name+'.root', 'RECREATE')
 h_MCrounded_pass.Write()
 h_MCrounded_fail.Write()
 out_fileMCr.Write()
@@ -659,21 +659,21 @@ avg_toyMC_fail = None
 avg_toyData_pass = None
 avg_toyData_fail = None
 if doToysMC:
-    print('\nRemoving all files matching plots/'+CATEGORY+'/toys/*MCsmooth2_toy*')
-    for fl in glob.glob('plots/'+CATEGORY+'/toys/*MCsmooth2_toy*'):
+    print('\nRemoving all files matching plots/'+CAT+'/toys/*MCsmooth2_toy*')
+    for fl in glob.glob('plots/'+CAT+'/toys/*MCsmooth2_toy*'):
         os.remove(fl)
     avg_toyMC_pass = toys_generator(h_MCsmooth2_pass, NTOYS, PLOT_DIR, "RECREATE", h_sig_pass)
     avg_toyMC_fail = toys_generator(h_MCsmooth2_fail, NTOYS, PLOT_DIR, "UPDATE", h_sig_fail)
 if doToysData:
-    print('\nRemoving all files matching plots/'+CATEGORY+'/toys/*Data_toy*')
-    for fl in glob.glob('plots/'+CATEGORY+'/toys/*Data_toy*'):
+    print('\nRemoving all files matching plots/'+CAT+'/toys/*Data_toy*')
+    for fl in glob.glob('plots/'+CAT+'/toys/*Data_toy*'):
         os.remove(fl)
     avg_toyData_pass = toys_generator(h_data_pass, NTOYS, PLOT_DIR, "RECREATE", h_sig_pass)
     avg_toyData_fail = toys_generator(h_data_fail, NTOYS, PLOT_DIR, "UPDATE", h_sig_fail)
 
 
 ## Write h_MC_pass and h_MC_fail and average toy histograms to ROOT file
-out_file_dataMC = R.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CATEGORY, CATEGORY, TOYSOURCE, NTOYS), 'UPDATE')
+out_file_dataMC = R.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CAT, CAT, TOYSOURCE, NTOYS), 'UPDATE')
 wrt_hists = [[h_MCsmooth1_pass, h_MCsmooth1_fail],
              [h_MCsmooth2_pass, h_MCsmooth2_fail],
              [h_MCrounded_pass, h_MCrounded_fail]]
@@ -716,24 +716,24 @@ del out_file_dataMC
 
 
 ## Write JSON for rounded MC template
-print('\nWriting '+JSON_DIR+'/'+CATEGORY+'_Htoaato4b_MCrounded.json')
+print('\nWriting '+JSON_DIR+'/'+CAT+'_Htoaato4b_MCrounded.json')
 with open('jsons/%s_Htoaato4b_MC.json' % CATL, 'r') as jf:
     jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
-jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCrounded_'+YEAR
-jsonMC['NAME'] = CATEGORY+'_Htoaato4b'
-with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_MCrounded.json', 'w') as jf:
+jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_MCrounded_'+YEAR
+jsonMC['NAME'] = CAT+'_Htoaato4b'
+with open(JSON_DIR+'/'+CAT+'_Htoaato4b_MCrounded.json', 'w') as jf:
     json.dump(jsonMC, jf, indent=2)
 for key in h_MCrounded_sig_pass.keys():
-    jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCrounded_'+key+'_'+YEAR
-    with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_MCrounded_'+key+'.json', 'w') as jf:
+    jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_MCrounded_'+key+'_'+YEAR
+    with open(JSON_DIR+'/'+CAT+'_Htoaato4b_MCrounded_'+key+'.json', 'w') as jf:
         json.dump(jsonMC, jf, indent=2)
 ## Write JSON for rounded data
-print('Writing '+JSON_DIR+'/'+CATEGORY+'_Htoaato4b_Data.json')
+print('Writing '+JSON_DIR+'/'+CAT+'_Htoaato4b_Data.json')
 with open('jsons/%s_Htoaato4b_Data.json' % CATL, 'r') as jf:
     jsonData = json.load(jf)  # `data` is now a Python dictionary or list
-jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_'+YEAR
-jsonData['NAME'] = CATEGORY+'_Htoaato4b'
-with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_Data.json', 'w') as jf:
+jsonData['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_Data_'+YEAR
+jsonData['NAME'] = CAT+'_Htoaato4b'
+with open(JSON_DIR+'/'+CAT+'_Htoaato4b_Data.json', 'w') as jf:
     json.dump(jsonData, jf, indent=2)
 
 
@@ -745,13 +745,13 @@ if doToysMC:
     for iToy in range(NTOYS):
         with open('jsons/%s_Htoaato4b_MC.json' % CATL, 'r') as jf:
             jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
-        jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCsmooth2_toy'+str(iToy)+'_'+YEAR
-        jsonMC['NAME'] = CATEGORY+'_Htoaato4b'
-        with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_mctoy'+str(iToy)+'.json', 'w') as jf:
+        jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_MCsmooth2_toy'+str(iToy)+'_'+YEAR
+        jsonMC['NAME'] = CAT+'_Htoaato4b'
+        with open(JSON_DIR+'/'+CAT+'_Htoaato4b_mctoy'+str(iToy)+'.json', 'w') as jf:
             json.dump(jsonMC, jf, indent=2)
         for key in h_MCrounded_sig_pass.keys():
-            jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCsmooth2_toy'+str(iToy)+'_'+key+'_'+YEAR
-            with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_mctoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
+            jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_MCsmooth2_toy'+str(iToy)+'_'+key+'_'+YEAR
+            with open(JSON_DIR+'/'+CAT+'_Htoaato4b_mctoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
                 json.dump(jsonMC, jf, indent=2)
 
 if doToysData:
@@ -762,13 +762,13 @@ if doToysData:
     for jToy in range(NTOYS):
         with open('jsons/%s_Htoaato4b_Data.json' % CATL, 'r') as jf:
             jsonData = json.load(jf)  # `data` is now a Python dictionary or list
-        jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_toy'+str(jToy)+'_'+YEAR
-        jsonData['NAME'] = CATEGORY+'_Htoaato4b'
-        with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_datatoy'+str(jToy)+'.json', 'w') as jf:
+        jsonData['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_Data_toy'+str(jToy)+'_'+YEAR
+        jsonData['NAME'] = CAT+'_Htoaato4b'
+        with open(JSON_DIR+'/'+CAT+'_Htoaato4b_datatoy'+str(jToy)+'.json', 'w') as jf:
             json.dump(jsonData, jf, indent=2)
         for key in h_MCrounded_sig_pass.keys():
-            jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_toy'+str(iToy)+'_'+key+'_'+YEAR
-            with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_datatoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
+            jsonData['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_Data_toy'+str(iToy)+'_'+key+'_'+YEAR
+            with open(JSON_DIR+'/'+CAT+'_Htoaato4b_datatoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
                 json.dump(jsonData, jf, indent=2)
 
 print('\n\nALL DONE with Haa4b_makeMCtoy.py!!!\n\n')
