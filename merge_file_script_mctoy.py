@@ -25,6 +25,7 @@ DATE     = '2025_01_01'
 CATS_IN = {}
 CAT_OUT = sys.argv[1]  ## gg0lIncl, LepHi, LepLo
 IN_DIR = 'raw_inputs/'
+INCL = 'Incl'
 
 print('\nRunning merge_file_script_mctoy.py for %s' % CAT_OUT)
 if CAT_OUT == 'gg0lIncl':
@@ -33,6 +34,7 @@ if CAT_OUT == 'gg0lIncl':
     MA_reg = '34a'
     DATE   = '2025_05_02'
     CAT_INS = ['gg0lLo','gg0lHi']
+    INCL = ''  ## Replace "Incl" with blank in directory / file / histogram names
     for cat in CAT_INS:
         CATS_IN[cat] = {}
         CATS_IN[cat]['sigs'] = [pr+'Htoaato4b' for pr in ['gg','VBF','W','Z','tt']]
@@ -46,6 +48,7 @@ elif CAT_OUT == 'VBFjjIncl':
     MA_reg = '34a'
     DATE   = '2025_04_06'
     CAT_INS = ['VBFjjLo','VBFjjHi']
+    INCL = ''  ## Replace "Incl" with blank in directory / file / histogram names
     for cat in CAT_INS:
         CATS_IN[cat] = {}
         CATS_IN[cat]['sigs'] = ['VBFHtoaato4b']
@@ -54,7 +57,39 @@ elif CAT_OUT == 'VBFjjIncl':
     CATS_IN['VBFjjHi']['dir'] = IN_DIR+'2D_in_VBFjj_'+DATE+'/VBFjjHi/'
     CATS_IN['VBFjjLo']['dir'] = IN_DIR+'2D_in_VBFjj_'+DATE+'/VBFjjLo/'
 
-elif CAT_OUT == 'LepHi':
+elif CAT_OUT == 'LepIncl':
+    MASSESH  = ['pnet']
+    WP_CUTS  = ['WP60']
+    MA_reg = 'a'
+    DATE   = '2025_03_06'
+    CAT_INS = ['WlvHi', 'ttbblv', 'ttbll', 'Zll', 'WlvLo', 'ttblv']
+    for cat in CAT_INS:
+        CATS_IN[cat] = {}
+        #CATS_IN[cat]['sigs']  = [pr+'Htoaato4b' for pr in ['W','Z','tt']]
+    print('\nError!!! All leptonic categories should have all WH/ZH/ttH signal available, not just one production mode.')
+    CATS_IN['WlvHi']['dir']   = IN_DIR+'2D_in_Wlv_ttlv_'+DATE+'/'
+    CATS_IN['ttbblv']['dir']  = IN_DIR+'2D_in_Wlv_ttlv_'+DATE+'/'
+    CATS_IN['ttbll']['dir']   = IN_DIR+'2D_in_ttll_'+DATE+'/'
+    CATS_IN['Zll']['dir']     = IN_DIR+'2D_in_Zll_'+DATE+'/'
+    CATS_IN['WlvHi']['sigs']  = ['WHtoaato4b']
+    CATS_IN['ttbblv']['sigs'] = ['ttHtoaato4b']
+    CATS_IN['ttbll']['sigs']  = ['ttHtoaato4b']
+    CATS_IN['Zll']['sigs']    = ['ZHtoaato4b']
+    #CATS_IN['ZvvHi']['sigs']  = ['ZHtoaato4b']
+    CATS_IN['WlvHi']['bkgs']  = ['Wlv','TT1l']
+    CATS_IN['ttbblv']['bkgs'] = ['Wlv','TT1l']
+    CATS_IN['ttbll']['bkgs']  = ['TT2l']
+    CATS_IN['Zll']['bkgs']    = ['Zll','ZZ','TT2l']
+    CATS_IN['WlvLo']['dir']  = IN_DIR+'2D_in_Wlv_ttlv_'+DATE+'/'
+    CATS_IN['ttblv']['dir']  = IN_DIR+'2D_in_Wlv_ttlv_'+DATE+'/'
+    #CATS_IN['ZvvLo']['dir']   = IN_DIR+'2D_in_ZvvLo_'+DATE+'/'
+    CATS_IN['WlvLo']['sigs'] = ['WHtoaato4b']
+    CATS_IN['ttblv']['sigs'] = ['ttHtoaato4b']
+    #CATS_IN['ZvvLo']['sigs'] = ['ZHtoaato4b']
+    CATS_IN['WlvLo']['bkgs'] = ['Wlv','TT1l']
+    CATS_IN['ttblv']['bkgs'] = ['Wlv','TT1l']
+
+elif CAT_OUT.startswith('LepHi'):
     MASSESH  = ['pnet']
     WP_CUTS  = ['WP60']
     MA_reg = 'a'
@@ -77,8 +112,31 @@ elif CAT_OUT == 'LepHi':
     CATS_IN['ttbblv']['bkgs'] = ['Wlv','TT1l']
     CATS_IN['ttbll']['bkgs']  = ['TT2l']
     CATS_IN['Zll']['bkgs']    = ['Zll','ZZ','TT2l']
+    if CAT_OUT == 'LepHiA':
+        CAT_INS.append('WlvLo')
+        CATS_IN['WlvLo'] = {}
+        CATS_IN['WlvLo']['dir']  = IN_DIR+'2D_in_Wlv_ttlv_'+DATE+'/'
+        CATS_IN['WlvLo']['sigs'] = ['WHtoaato4b']
+        CATS_IN['WlvLo']['bkgs'] = ['Wlv','TT1l']
+    if CAT_OUT == 'LepHiB':
+        CAT_INS.append('ttblv')
+        CATS_IN['ttblv'] = {}
+        CATS_IN['ttblv']['dir']  = IN_DIR+'2D_in_Wlv_ttlv_'+DATE+'/'
+        CATS_IN['ttblv']['sigs'] = ['ttHtoaato4b']
+        CATS_IN['ttblv']['bkgs'] = ['Wlv','TT1l']
+    if CAT_OUT == 'LepHiC':
+        CAT_INS.remove('WlvHi')
+    if CAT_OUT == 'LepHiD':
+        CAT_INS.remove('ttbblv')
+    if CAT_OUT == 'LepHiE':
+        CAT_INS.remove('ttbll')
+    if CAT_OUT == 'LepHiF':
+        CAT_INS.remove('Zll')
+    for cat in list(CATS_IN.keys()):
+        if not cat in CAT_INS:
+            del CATS_IN[cat]
 
-elif CAT_OUT == 'LepLo':
+elif CAT_OUT.startswith('LepLo'):
     MASSESH  = ['pnet']
     WP_CUTS  = ['WP60']
     MA_reg = 'a'
@@ -97,6 +155,37 @@ elif CAT_OUT == 'LepLo':
     #CATS_IN['ZvvLo']['sigs'] = ['ZHtoaato4b']
     CATS_IN['WlvLo']['bkgs'] = ['Wlv','TT1l']
     CATS_IN['ttblv']['bkgs'] = ['Wlv','TT1l']
+    if CAT_OUT == 'LepLoA':
+        CAT_INS.remove('WlvLo')
+    if CAT_OUT == 'LepLoB':
+        CAT_INS.remove('ttblv')
+    if CAT_OUT == 'LepLoC':
+        CAT_INS.append('WlvHi')
+        CATS_IN['WlvHi'] = {}
+        CATS_IN['WlvHi']['dir']   = IN_DIR+'2D_in_Wlv_ttlv_'+DATE+'/'
+        CATS_IN['WlvHi']['sigs']  = ['WHtoaato4b']
+        CATS_IN['WlvHi']['bkgs']  = ['Wlv','TT1l']
+    if CAT_OUT == 'LepLoD':
+        CAT_INS.append('ttbblv')
+        CATS_IN['ttbblv'] = {}
+        CATS_IN['ttbblv']['dir']  = IN_DIR+'2D_in_Wlv_ttlv_'+DATE+'/'
+        CATS_IN['ttbblv']['sigs'] = ['ttHtoaato4b']
+        CATS_IN['ttbblv']['bkgs'] = ['Wlv','TT1l']
+    if CAT_OUT == 'LepLoE':
+        CAT_INS.append('ttbll')
+        CATS_IN['ttbll'] = {}
+        CATS_IN['ttbll']['dir']   = IN_DIR+'2D_in_ttll_'+DATE+'/'
+        CATS_IN['ttbll']['sigs']  = ['ttHtoaato4b']
+        CATS_IN['ttbll']['bkgs']  = ['TT2l']
+    if CAT_OUT == 'LepLoF':
+        CAT_INS.append('Zll')
+        CATS_IN['Zll'] = {}
+        CATS_IN['Zll']['dir']     = IN_DIR+'2D_in_Zll_'+DATE+'/'
+        CATS_IN['Zll']['sigs']    = ['ZHtoaato4b']
+        CATS_IN['Zll']['bkgs']    = ['Zll','ZZ','TT2l']
+    for cat in list(CATS_IN.keys()):
+        if not cat in CAT_INS:
+            del CATS_IN[cat]
 
 
 else:
@@ -104,7 +193,7 @@ else:
     sys.exit()
 
 ## For use as input to Haa4b_makeMCtoy.py
-OUT_DIR = IN_DIR+'2D_in_merged_'+CAT_OUT.replace('Incl','')+'/'
+OUT_DIR = IN_DIR+'2D_in_merged_'+CAT_OUT.replace('Incl',INCL)+'/'
 ## For use as input to htoaato4b_mctoy.py
 OUT_DIRS = {}
 for cat in [CAT_OUT]+CAT_INS:
@@ -139,7 +228,7 @@ def main():
         for samp in samps:
             for wp in WP_CUTS:
                 ## CHANGING THIS IN ORDER TO ACCOMMODATE NON-UNIFORM NAMING CONVENTIONS!!!
-                if 'LepHi' in CAT_OUT or 'LepLo' in CAT_OUT:
+                if 'LepHi' in CAT_OUT or 'LepLo' or 'LepIncl' in CAT_OUT:
                     in_file_str = CATS_IN[cat]['dir']+'%s/%s_%s_%s.root' % (wp, cat, samp, YEAR)
                 elif 'VBF' in CAT_OUT:
                     in_file_str = CATS_IN[cat]['dir']+'%s_Xto4bv2_%s_%s.root' % (cat, samp, YEAR)
@@ -190,14 +279,14 @@ def main():
                             yLo = h_outs[h_out_name].GetYaxis().GetBinLowEdge(1)
                             yHo = h_outs[h_out_name].GetYaxis().GetBinLowEdge(nYo+1)
                             xLi = h_in.GetXaxis().GetBinLowEdge(1)
-                            xHi = h_in.GetXaxis().GetBinLowEdge(nXo+1)
+                            xHi = h_in.GetXaxis().GetBinLowEdge(nXi+1)
                             yLi = h_in.GetYaxis().GetBinLowEdge(1)
-                            yHi = h_in.GetYaxis().GetBinLowEdge(nYo+1)
+                            yHi = h_in.GetYaxis().GetBinLowEdge(nYi+1)
                             if (nXo != nXi or nYo != nYi or xLo != xLi or xHo != xHi or yLo != yLi or yHo != yHi):
                                 print('\nMAJOR ERROR!!! %s is %d x %d, %s is %d x %d' % (h_out_name, nXo, nYo,
-                                                                                         nYi, nYi, h_in.GetName()))
-                                print('Spanning [%.1f-%.1f] x [%.1f-%.1f] vs. [%.1f-%.1f]' % (xLo, xHo, yLo, yHo,
-                                                                                              xLi, xHi, yLi, yHi))
+                                                                                         h_in_name, nXi, nYi))
+                                print('Spanning [%.1f-%.1f] x [%.1f-%.1f] vs. [%.1f-%.1f] x [%.1f-%.1f]' % (xLo, xHo, yLo, yHo,
+                                                                                                            xLi, xHi, yLi, yHi))
                                 sys.exit()
                             else:    
                                 h_outs[h_out_name].Add(h_in)
@@ -208,7 +297,7 @@ def main():
                 in_file.Close()
 
                 ## Common output ROOT file with all histograms (input to Haa4b_makeMCtoy.py)
-                out_file_str = OUT_DIR+('%s_%s_%s.root' % (CAT_OUT.replace('Incl',''), samp, YEAR))
+                out_file_str = OUT_DIR+('%s_%s_%s.root' % (CAT_OUT.replace('Incl',INCL), samp, YEAR))
                 root_cmd = ('update' if os.path.exists(out_file_str) else 'recreate')
                 out_file = R.TFile(out_file_str, root_cmd)
                 ## ROOT file with only merged category histograms (input to htoaato4b_mctoy.py)
