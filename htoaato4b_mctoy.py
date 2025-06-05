@@ -27,7 +27,6 @@ SIGINJ = '' if len(sys.argv) < 5 else str(sys.argv[4])  ## mA_XX_sigBr_YYY
 OUT_DIR = 'output'
 CARD_ONLY = True  ## Just generate cards, don't do any fits, plots, etc.
 
-CATL    = CAT       ## Selection category with lepton "l" instead of mu "m" or ele "e"
 MASSH   = 'pnet'    ## Higgs mass regression (mass, msoft, pnet)
 MASSESA = ['15','30','55']  ## Masses of "a" boson
 MASSA   = '%sto%s' % (MASSESA[0], MASSESA[-1])
@@ -53,27 +52,42 @@ if CAT.startswith('gg0l'):
     FITLIST = ['1x1C']
     NOMTF   = 0.06
     WP      = 'WP40'    ## Hto4b efficiency working point
-if CAT.startswith('VBFjj'):
+elif CAT.startswith('VBFjj'):
     SIGS    = ['VBFH']
     print('\nERROR!!! VBFjj should include more signal samples!\n')
     FITLIST = ['0x0smr','1x1C']
     WP      = 'WP40'    ## Hto4b efficiency working point
     NOMTF   = (0.1 if WP == 'WP40' else 0.6)
-if CAT.startswith('Vjj'):
+elif CAT.startswith('Vjj'):
     SIGS    = ['WH','ZH','ttH','ggH','VBFH']
     FITLIST = ['0x0','0x0smr','1d1C']
     NOMTF   = (0.15 if WP == 'WP40' else 0.22)
-if CAT == 'LepHi':  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
+elif CAT.startswith('LepHi'):  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
+    SIGS    = ['WH','ttH','ZH']
+    if CAT == 'LepHiC': SIGS = ['ttH','ZH']
+    if CAT == 'LepHiF': SIGS = ['WH','ttH']
+    #FITLIST = ['0x0','0x0smr','1d1C']
+    FITLIST = ['0x0']
+    WP      = 'WP60'    ## Hto4b efficiency working point
+    NOMTF   = 0.11
+elif CAT.startswith('LepLo'):  ## WlvLo + ttblv + ZvvLo
+    SIGS    = ['WH','ttH']
+    if CAT == 'LepLoA': SIGS = ['ttH']
+    if CAT == 'LepLoB': SIGS = ['WH']
+    if CAT == 'LepLoF': SIGS = ['WH','ttH','ZH']
+    #FITLIST = ['0x0','0x0smr','1d1C']
+    FITLIST = ['0x0']
+    WP      = 'WP60'    ## Hto4b efficiency working point
+    NOMTF   = 0.11
+elif CAT.startswith('LepIncl'):  ## LepHi + LepLo
     SIGS    = ['WH','ttH','ZH']
     #FITLIST = ['0x0','0x0smr','1d1C']
     FITLIST = ['0x0']
     WP      = 'WP60'    ## Hto4b efficiency working point
     NOMTF   = 0.11
-if CAT == 'LepLo':  ## WlvLo + ttblv + ZvvLo
-    SIGS    = ['WH','ttH']
-    FITLIST = ['0x0','0x0smr','1d1C']
-    WP      = 'WP60'    ## Hto4b efficiency working point
-    NOMTF   = 0.11
+else:
+    print('\ERROR!!! Invalid category %s! Quitting.' % CAT)
+    sys.exit()
 
 
 '''--------------------------Helper functions---------------------------'''
@@ -140,7 +154,7 @@ def _working_area(fitN):
     return OUT_DIR+'/'+working_area
 
 def _working_json():
-    working_json = 'jsons/%s_Htoaato4b_Data.json' % CATL
+    working_json = 'jsons/%s_Htoaato4b_Data.json' % CAT
     toy_str = ''
     if UseMCToy:
         toy_str = ('_mctoy%d.json' % toys) if toys >= 0 else '_MCrounded.json'
