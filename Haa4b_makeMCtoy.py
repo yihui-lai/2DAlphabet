@@ -14,6 +14,7 @@ VERBOSE  = False
 VVERBOSE = False
 VVVERBOSE = False
 CATEGORY = str(sys.argv[1])  ## gg0lIncl/Hi/Lo, VBFjjIncl/Hi/Lo, LepHi/Lo
+CATL = CATEGORY  ## Modified category name
 NTOYS    = int(sys.argv[2])
 TOYSOURCE = str(sys.argv[3]) ## MC, Data, DataAndMC, None
 SMOOTH_CUT = 3.0  ## Largest allowed fluctation in smoothed background (in standard deviations)
@@ -403,7 +404,7 @@ for supr in ['gg0l','VBFjj']:
 
 ## Different categories use different sets of background samples
 samps = ['Data']
-if 'gg0l' in CATEGORY or 'VBFjj' in CATEGORY:
+if CATEGORY.startswith('gg0l') or CATEGORY.startswith('VBFjj'):
     samps.append('MC')  ## Background MC already summed
     sigs = ['ggH','VBFH','WH','ZH','ttH']
     if 'VBFjj' in CATEGORY:
@@ -413,12 +414,30 @@ if 'gg0l' in CATEGORY or 'VBFjj' in CATEGORY:
         for mA in MASSESA:
             samps.append(sig+'toaato4b_mA_'+str(mA))
 
-elif 'Lep' in CATEGORY:
+elif CATEGORY.startswith('Lep'):
+    CATL = CATEGORY[0:5]  ## i.e. LepHi or LepLo
+    if CATL.endswith('In'):
+        CATL = 'LepIncl'
     samps = samps+['Wlv','TT1l']
     sigs  = ['WH','ttH']
-    if CATEGORY == 'LepHi':
+    if CATEGORY.startswith('LepHi') or CATEGORY.startswith('LepIncl'):
         samps = samps+['Zll','TT2l','ZZ']
-        sigs  = sigs+['ZH']
+        sigs  = sigs+['ZH']  ## Temporary until all signals are included in all modes
+    if CATEGORY == 'LepLoA':
+        sigs.remove('WH')  ## Temporary until all signals are included in all modes
+    if CATEGORY == 'LepLoB':
+        sigs.remove('ttH')  ## Temporary until all signals are included in all modes
+    if CATEGORY == 'LepHiC':
+        sigs.remove('WH')  ## Temporary until all signals are included in all modes
+    if CATEGORY == 'LepLoE':
+        samps = samps+['TT2l']  ## Temporary until TT2l background is included in 1l categories
+    if CATEGORY == 'LepHiF':
+        sigs.remove('ZH')  ## Temporary until all signals are included in all modes
+        samps.remove('Zll')
+        samps.remove('ZZ')
+    if CATEGORY == 'LepLoF':
+        sigs.append('ZH')  ## Temporary until all signals are included in all modes
+        samps = samps+['Zll','ZZ']  ## Temporary until Zll and ZZ backgrounds are included in 1l categories
     for sig in sigs:
         for mA in MASSESA:
             samps.append(sig+'toaato4b_mA_'+str(mA))
@@ -698,9 +717,10 @@ del out_file_dataMC
 
 ## Write JSON for rounded MC template
 print('\nWriting '+JSON_DIR+'/'+CATEGORY+'_Htoaato4b_MCrounded.json')
-with open('jsons/%s_Htoaato4b_MC.json' % CATEGORY, 'r') as jf:
+with open('jsons/%s_Htoaato4b_MC.json' % CATL, 'r') as jf:
     jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
 jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCrounded_'+YEAR
+jsonMC['NAME'] = CATEGORY+'_Htoaato4b'
 with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_MCrounded.json', 'w') as jf:
     json.dump(jsonMC, jf, indent=2)
 for key in h_MCrounded_sig_pass.keys():
@@ -709,9 +729,10 @@ for key in h_MCrounded_sig_pass.keys():
         json.dump(jsonMC, jf, indent=2)
 ## Write JSON for rounded data
 print('Writing '+JSON_DIR+'/'+CATEGORY+'_Htoaato4b_Data.json')
-with open('jsons/%s_Htoaato4b_Data.json' % CATEGORY, 'r') as jf:
+with open('jsons/%s_Htoaato4b_Data.json' % CATL, 'r') as jf:
     jsonData = json.load(jf)  # `data` is now a Python dictionary or list
 jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_'+YEAR
+jsonData['NAME'] = CATEGORY+'_Htoaato4b'
 with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_Data.json', 'w') as jf:
     json.dump(jsonData, jf, indent=2)
 
@@ -722,9 +743,10 @@ if doToysMC:
     for fl in glob.glob(JSON_DIR+'/*mctoy*'):
         os.remove(fl)
     for iToy in range(NTOYS):
-        with open('jsons/%s_Htoaato4b_MC.json' % CATEGORY, 'r') as jf:
+        with open('jsons/%s_Htoaato4b_MC.json' % CATL, 'r') as jf:
             jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
         jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_MCsmooth2_toy'+str(iToy)+'_'+YEAR
+        jsonMC['NAME'] = CATEGORY+'_Htoaato4b'
         with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_mctoy'+str(iToy)+'.json', 'w') as jf:
             json.dump(jsonMC, jf, indent=2)
         for key in h_MCrounded_sig_pass.keys():
@@ -738,9 +760,10 @@ if doToysData:
     for fl in glob.glob(JSON_DIR+'/*datatoy*'):
         os.remove(fl)
     for jToy in range(NTOYS):
-        with open('jsons/%s_Htoaato4b_Data.json' % CATEGORY, 'r') as jf:
+        with open('jsons/%s_Htoaato4b_Data.json' % CATL, 'r') as jf:
             jsonData = json.load(jf)  # `data` is now a Python dictionary or list
         jsonData['PROCESSES']["data_obs"]['ALIAS'] = CATEGORY+'_Data_toy'+str(jToy)+'_'+YEAR
+        jsonData['NAME'] = CATEGORY+'_Htoaato4b'
         with open(JSON_DIR+'/'+CATEGORY+'_Htoaato4b_datatoy'+str(jToy)+'.json', 'w') as jf:
             json.dump(jsonData, jf, indent=2)
         for key in h_MCrounded_sig_pass.keys():

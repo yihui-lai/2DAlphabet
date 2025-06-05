@@ -26,6 +26,7 @@ TOYSOURCE='MC'
 
 # Categories for which to generate toys
 declare -a CATS=('gg0lHi' 'gg0lLo' 'gg0lIncl' 'LepHi' 'LepLo' 'LepIncl' 'VBFjjHi' 'VBFjjLo' 'VBFjjIncl')
+#declare -a CATS=('LepHiA' 'LepHiB' 'LepHiC' 'LepHiD' 'LepHiE' 'LepHiF' 'LepLoA' 'LepLoB' 'LepLoC' 'LepLoD' 'LepLoE' 'LepLoF')
 
 
 ## Copy input ROOT files to local area, then merge files
