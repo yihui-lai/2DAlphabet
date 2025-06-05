@@ -171,7 +171,9 @@ def _load_rpf_smear(fitN):
                                       loadPrevious=True,
                                       findreplace={'path':PATH, 'SIGNAME':_sig_names(),
                                                    'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
-    params_to_set =      twoD_for_rpf_smear.GetParamsOnMatch('rpf.*'+fitN, 'mA_all_area', 'b')
+
+    params_to_set =      twoD_for_rpf_smear.GetParamsOnMatch('Background_Fail.*par0', 'mA_all_area', 'b')
+    params_to_set.update(twoD_for_rpf_smear.GetParamsOnMatch('rpf.*'+fitN, 'mA_all_area', 'b'))
     params_to_set.update(twoD_for_rpf_smear.GetParamsOnMatch('Background_smear', 'mA_all_area', 'b'))
     return {k:v['val'] for k,v in params_to_set.items()}
 
