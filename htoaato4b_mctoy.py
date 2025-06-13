@@ -27,12 +27,15 @@ SIGINJ = '' if len(sys.argv) < 5 else str(sys.argv[4])  ## mA_XX_sigBr_YYY
 OUT_DIR = 'output'
 CARD_ONLY = True  ## Just generate cards, don't do any fits, plots, etc.
 
-MASSH   = 'pnet'    ## Higgs mass regression (mass, msoft, pnet)
-MASSESA = ['15','30','55']  ## Masses of "a" boson
-MASSA   = '%sto%s' % (MASSESA[0], MASSESA[-1])
-WP      = 'WP40'    ## Hto4b efficiency working point
+MHREG   = 'pnet'    ## Higgs mass regression (mass, msoft, pnet)
+MAREG   = '34a'     ## "a" boson mass regression (34a, 34d, 4a)
+#MASSESA = ['15','30','55']  ## Masses of "a" boson
+MASSESA = ['12','20','35','50','60']  ## Masses of "a" boson
+#MASSESA = ['30']  ## Masses of "a" boson
+WP      = 'WP60'    ## Hto4b efficiency working point
 YEAR    = '2018'    ## Data year
-PATH    = 'plots/'+CAT
+DATE    = '2025_06_03'
+PATH    = 'plots/'+YEAR+'/'+DATE+'/'+CAT
 UseMCToy   = (TOYSOURCE == 'MC')
 UseDataToy = (TOYSOURCE == 'Data')
 toys=-1
@@ -46,48 +49,37 @@ MD_DIR = '/afs/cern.ch/user/m/moanwar/public/'
 AB_DIR = '/afs/cern.ch/work/a/abrinke1/public/HiggsToAA/coffea/eventloop/plots/'
 
 
+if CAT.startswith('gg0l') or CAT.startswith('VBFjj') or CAT.startswith('Vjj'):
+    SIGS = ['ggH', 'VBFH', 'WH', 'ZH', 'ttH']
+elif CAT.startswith('Lep') or CAT.startswith('Zll') or CAT.startswith('Wlv') or CAT.startswith('ttl') or CAT.startswith('Zvv'):
+    SIGS = ['WH','ttH','ZH']
+elif CAT.startswith('tt0l'):
+    SIGS = ['ggH','ttH']  ## VBF, WH, and ZH have no passing signal events
+else: assert False, '\nInvalid category %s!!! Quitting.' % CAT
+
+FITLIST = ['1d1C']
+NOMTF = 0.05
 if CAT.startswith('gg0l'):
-    SIGS    = ['ggH', 'WH','ttH','ZH', 'VBFH']
     #FITLIST = ['0x0smr','1d1C','1x1C']
-    FITLIST = ['1x1C']
-    NOMTF   = 0.06
     WP      = 'WP40'    ## Hto4b efficiency working point
 elif CAT.startswith('VBFjj'):
-    SIGS    = ['VBFH']
     print('\nERROR!!! VBFjj should include more signal samples!\n')
-    FITLIST = ['0x0smr','1x1C']
+    #FITLIST = ['0x0smr','1x1C']
     WP      = 'WP40'    ## Hto4b efficiency working point
-    NOMTF   = (0.1 if WP == 'WP40' else 0.6)
-elif CAT.startswith('Vjj'):
-    SIGS    = ['WH','ZH','ttH','ggH','VBFH']
-    FITLIST = ['0x0','0x0smr','1d1C']
-    NOMTF   = (0.15 if WP == 'WP40' else 0.22)
-elif CAT.startswith('LepHi'):  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
-    SIGS    = ['WH','ttH','ZH']
-    if CAT == 'LepHiC': SIGS = ['ttH','ZH']
-    if CAT == 'LepHiF': SIGS = ['WH','ttH']
-    #FITLIST = ['0x0','0x0smr','1d1C']
-    FITLIST = ['0x0']
-    WP      = 'WP60'    ## Hto4b efficiency working point
-    NOMTF   = 0.11
-elif CAT.startswith('LepLo'):  ## WlvLo + ttblv + ZvvLo
-    SIGS    = ['WH','ttH']
-    if CAT == 'LepLoA': SIGS = ['ttH']
-    if CAT == 'LepLoB': SIGS = ['WH']
-    if CAT == 'LepLoF': SIGS = ['WH','ttH','ZH']
-    #FITLIST = ['0x0','0x0smr','1d1C']
-    FITLIST = ['0x0']
-    WP      = 'WP60'    ## Hto4b efficiency working point
-    NOMTF   = 0.11
-elif CAT.startswith('LepIncl'):  ## LepHi + LepLo
-    SIGS    = ['WH','ttH','ZH']
-    #FITLIST = ['0x0','0x0smr','1d1C']
-    FITLIST = ['0x0']
-    WP      = 'WP60'    ## Hto4b efficiency working point
-    NOMTF   = 0.11
-else:
-    print('\ERROR!!! Invalid category %s! Quitting.' % CAT)
-    sys.exit()
+# elif CAT.startswith('Vjj'):
+#     #FITLIST = ['0x0','0x0smr','1d1C']
+# elif CAT.startswith('LepHi'):  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
+#     #FITLIST = ['0x0','0x0smr','1d1C']
+#     #FITLIST = ['0x0']
+# elif CAT.startswith('LepLo'):  ## WlvLo + ttblv + ZvvLo
+#     #FITLIST = ['0x0','0x0smr','1d1C']
+#     #FITLIST = ['0x0']
+# elif CAT.startswith('LepIncl'):  ## LepHi + LepLo
+#     #FITLIST = ['0x0','0x0smr','1d1C']
+#     #FITLIST = ['0x0']
+# else:
+#     print('\ERROR!!! Invalid category %s! Quitting.' % CAT)
+#     sys.exit()
 
 
 '''--------------------------Helper functions---------------------------'''
@@ -96,7 +88,7 @@ def _sig_names():
     signames = []
     for sig in SIGS:
         for massA in MASSESA:
-            signames.append('%s_%stoaato4b_mA_%s_%s' % (CAT, sig, massA, YEAR))
+            signames.append('%s_%stoaato4b_mA_%s_%s_%s_%s' % (CAT, sig, massA, YEAR, MHREG, MAREG))
     return signames
 
 def _select_signal(row, args):
@@ -142,11 +134,11 @@ def _select_signal(row, args):
         return True
 
 def _working_area(fitN):
-    working_area = 'fits_%s_Htoaato4b_mH_%s_mA_%s_%s_%s_%s' % (CAT, MASSH, MASSA, WP, fitN, YEAR)
+    working_area = 'fits_%s_Htoaato4b_%s_%s_%s_%s_%s' % (CAT, MHREG, MAREG, WP, fitN, YEAR)
     if UseMCToy:
-        working_area = 'mctoys/'+working_area+(('_toy%d' % toys) if toys >= 0 else '_MCrounded')
+        working_area = 'MCtoys/'+working_area+(('_toy%d' % toys) if toys >= 0 else '_MCrounded')
     if UseDataToy:
-        working_area = 'datatoys/'+working_area+(('_toy%d' % toys) if toys >= 0 else '_Data')
+        working_area = 'Datatoys/'+working_area+(('_toy%d' % toys) if toys >= 0 else ('_Data' if toys == -2 else '_Datarounded'))
     if SIGINJ.startswith('mA_') and '_sigBr_' in SIGINJ:
         working_area += ('_'+SIGINJ)
     if not os.path.exists(OUT_DIR+'/'+working_area):
@@ -154,23 +146,24 @@ def _working_area(fitN):
     return OUT_DIR+'/'+working_area
 
 def _working_json():
-    working_json = 'jsons/%s_Htoaato4b_Data.json' % CAT
+    base_json = 'jsons/%s_Htoaato4b_Data.json' % CAT
     toy_str = ''
     if UseMCToy:
-        toy_str = ('_mctoy%d.json' % toys) if toys >= 0 else '_MCrounded.json'
-        working_json = 'jsons/toys/'+CAT+'/'+working_json[6:].replace('_Data.json', toy_str)
+        toy_str = ('_MCtoy%d.json' % toys) if toys >= 0 else '_MCrounded.json'
+        working_json = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT+'/'+base_json[6:].replace('_Data.json', toy_str)
     if UseDataToy:
-        toy_str = ('_datatoy%d.json' % toys) if toys >= 0 else '_Data.json'
-        working_json = 'jsons/toys/'+CAT+'/'+working_json[6:].replace('_Data.json', toy_str)
+        toy_str = ('_Datatoy%d.json' % toys) if toys >= 0 else ('_Data.json' if toys == -2 else '_Datarounded.json')
+        working_json = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT+'/'+base_json[6:].replace('_Data.json', toy_str)
     if SIGINJ.startswith('mA_') and '_sigBr_' in SIGINJ:
         working_json = working_json.replace('.json', '_'+SIGINJ+'.json')
+    working_json = working_json.replace('.json', '_%s_%s.json' % (MHREG, MAREG))
     return working_json
         
 def _load_rpf_smear(fitN):
     twoD_for_rpf_smear = TwoDAlphabet(_working_area(fitN), _working_json(),
                                       loadPrevious=True,
                                       findreplace={'path':PATH, 'SIGNAME':_sig_names(),
-                                                   'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
+                                                   'HIST':'$process_%s_$region_Nom' % WP})
 
     params_to_set =      twoD_for_rpf_smear.GetParamsOnMatch('Background_Fail.*par0', 'mA_all_area', 'b')
     params_to_set.update(twoD_for_rpf_smear.GetParamsOnMatch('rpf.*'+fitN, 'mA_all_area', 'b'))
@@ -273,7 +266,7 @@ def test_make(SRorCR, fitN):
 
     # TwoDAlphabet class defined in TwoDAlphabet/twoDalphabet.py
     # First argument is the "tag", i.e. output directory name, in this case including the
-    # Higgs production mode (CAT), AK8 mass algo (MASSH), and signal "a" boson mass (MASSA)
+    # Higgs production mode (CAT) and AK8 H and "a" mass algos (MHREG and MAREG).
     # Second argument is JSON config file, third argument says we're starting from scratch
     # findreplace adds lines to GLOBAL part of JSON (_addFindReplace in TwoDAlphabet/config.py)
     # in this case a specific signal model (production mode and "a" boson mass)
@@ -281,7 +274,7 @@ def test_make(SRorCR, fitN):
     twoD = TwoDAlphabet(_working_area(fitN), _working_json(),
                         loadPrevious=False, verbose=VERBOSE,
                         findreplace={'path':PATH, 'SIGNAME':_sig_names(),
-                                     'HIST':'$process_%s_%s_$region_Nom' % (MASSH, WP)})
+                                     'HIST':'$process_%s_$region_Nom' % WP})
     if VERBOSE: print('Completed first TwoDAlphabet with loadPrevious=False')
     # Initial "QCD" template simply equals data - all MC backgrounds
     # Is this really what we want for the "Pass" region as well? - AWB 2024.05.21
@@ -427,7 +420,7 @@ def test_make_card(SRorCR, fitN):
     # is reserved for quick hacks by those who are familiar with Combine cards.
     twoD.MakeCard(subsetAll, 'mA_all_area')
     for massA in MASSESA:
-        signame = 'Htoaato4b_mA_%s_%s' % (massA, YEAR)
+        signame = 'Htoaato4b_mA_%s_%s_%s_%s' % (massA, YEAR, MHREG, MAREG)
         subset = twoD.ledger.select(_select_signal, signame, fitN)
         areaname = 'mA_%s_area' % massA
         twoD.MakeCard(subset, areaname)
@@ -471,7 +464,7 @@ def test_limit(SRorCR, fitN):
 
     areaname = None
     for massA in MASSESA:
-        signame = 'Htoaato4b_mA_%s_%s' % (massA, YEAR)
+        signame = 'Htoaato4b_mA_%s_%s_%s_%s' % (massA, YEAR, MHREG, MAREG)
         areaname = 'mA_%s_area' % massA
         print ('Performing limit for %s in %s' % (signame, areaname))
 
@@ -499,7 +492,7 @@ def test_GoF(SRorCR, fitN):
     # If the card doesn't exist, make it (in the case that test_make_card() wasn't run first).
     # Only need to run with one signal model, since we fix signal strength to 0 anyway.
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
-    signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], midMA, YEAR)
+    signame = '%s_%stoaato4b_mA_%s_%s_%s_%s' % (CAT, SIGS[0], midMA, YEAR, MHREG, MAREG)
     areaname = 'mA_%s_area' % midMA
     if not os.path.exists(twoD.tag+'/'+areaname+'/card.txt'):
         subset = twoD.ledger.select(_select_signal, signame, fitN)
@@ -522,7 +515,7 @@ def test_SigInj(SRorCR, massA, fitN):
     '''Perform a signal injection test'''
     assert SRorCR in ['SR','CR']
 
-    signame = '%s_%stoaato4b_mA_%s_%s' % (CAT, SIGS[0], massA, YEAR)
+    signame = '%s_%stoaato4b_mA_%s_%s_%s_%s' % (CAT, SIGS[0], massA, YEAR, MHREG, MAREG)
     areaname = 'mA_%s_area' % massA
     twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
 
@@ -542,13 +535,13 @@ def test_SigInj(SRorCR, massA, fitN):
         condor=False, njobs=1)
 
 def test_GoF_plot(SRorCR, fitN):
-    '''Plot the GoF in fits_<CAT>_Htoaato4b_mH_<MASSH>_mA_<MASSA>_<WP>_<YEAR>/mA_<MASSA>_area (condor=True indicates that condor jobs need to be unpacked)'''
+    '''Plot the GoF in fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<MASSA>_area (condor=True indicates that condor jobs need to be unpacked)'''
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
     plot.plot_gof(_working_area(fitN),
                   'mA_%s_area' % midMA, condor=False)
 
 def test_SigInj_plot(SRorCR, massA):
-    '''Plot the signal injection test for r=0 injected and stored in fits_<CAT>_Htoaato4b_mH_<MASSH>_mA_<MASSA>_<WP>_<YEAR>/mA_<MASSA>_area
+    '''Plot the signal injection test for r=0 injected and stored in fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<MASSA>_area
     (condor=True indicates that condor jobs need to be unpacked)'''
     plot.plot_signalInjection(_working_area(fitN),
                               'mA_%s_area' % massA, injectedAmount=0, condor=False)
