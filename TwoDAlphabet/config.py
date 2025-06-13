@@ -382,8 +382,26 @@ class OrganizedHists():
         '''
         ## Save "data" sideband histogram to help signal-zeroing logic
         h_data_fail = None
-        ## Loop over all histograms
-        for infilename,histdf in self.hist_map.items():
+        ## Sort hist map to put data path at the front
+        hist_map_keys = []
+        foundData = False
+        for key in self.hist_map.keys():
+            hist_map_keys.append(key)
+            fname = key.split('/')[-1]
+            assert fname.endswith('.root'), 'File path in config.py not a ROOT file?!?' % key
+            if ('_Data' in fname) or ('_MCround' in fname) or ('_toy' in fname):
+                if foundData:
+                    print('\nIn config.py, found data file %s, but had already found %s!!!' % (key, hist_map_keys[0]))
+                    raise RuntimeError('Cannot have 2 data files!!!')
+                else:
+                    foundData = True
+                    hist_map_keys = hist_map_keys[-1:] + hist_map_keys[:-1]  ## Move data path to the front
+        ## End loop: for key in self.hist_map.keys()
+
+        ## Loop over all the histograms
+        #for infilename,histdf in self.hist_map.items():
+        for infilename in hist_map_keys:
+            histdf = self.hist_map[infilename]
             infile = ROOT.TFile.Open(infilename)
             for row in histdf.itertuples():
                 if row.source_histname not in [k.GetName() for k in infile.GetListOfKeys()]:
