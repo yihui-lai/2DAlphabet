@@ -17,14 +17,21 @@ CAT = str(sys.argv[1])  ## gg0lIncl/Hi/Lo, VBFjjIncl/Hi/Lo, LepHi/Lo
 CATL = CAT  ## Modified category name
 NTOYS    = int(sys.argv[2])
 TOYSOURCE = str(sys.argv[3]) ## MC, Data, DataAndMC, None
-SMOOTH_CUT = 3.0  ## Largest allowed fluctation in smoothed background (in standard deviations)
-MASSESA = ['15','30','55']
-SIGINJ = {'15':[5, 10, 20, 50],
-          '30':[10, 20, 50, 100],
-          '55':[10, 20, 50, 100, 200]}  ## Signal to inject, in 1/1000ths
+SMOOTH_CUT = 2.5  ## Largest allowed fluctation in smoothed background (in standard deviations)
+MHREG   = 'pnet'
+MAREG   = '34a'
+MASSESA = ['12']+[str(mA*5) for mA in range(3,13)]
+SIGINJ = {}
+for mA in MASSESA:  ## Signal to inject, in 1/1000ths
+    if   int(mA) <= 20: SIGINJ[mA] = [20]  ## [5, 10, 20, 50]
+    elif int(mA) <= 40: SIGINJ[mA] = [50]  ## [10, 20, 50, 100]
+    else:               SIGINJ[mA] = [100] ## [10, 20, 50, 100, 200]
 YEAR = '2018'
-PLOT_DIR = 'plots/'+CAT+'/toys'
-JSON_DIR = 'jsons/toys/'+CAT
+DATE = '2025_06_03'
+PLOT_DIR = 'plots/'+YEAR+'/'+DATE+'/'+CAT
+JSON_DIR = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT
+DMs = ['Data','MC']
+PFs = ['Pass','Fail']
 
 ## Set toy options
 doToysMC   = (TOYSOURCE == 'MC' or TOYSOURCE == 'DataAndMC')
@@ -33,12 +40,12 @@ if not (doToysMC or doToysData or TOYSOURCE == 'None'):
     print('\n\nHaa4b_makeMCtoy.py bad option! TOYSOURCE = %s. Quitting.\n')
     sys.exit()
 ## Check for output directory
-if not os.path.exists('plots/'+CAT):
-    print('\n\n\nHaa4b_makeMCtoy.py error! plots/'+CAT+' does not exist. Run merge_file_script_mctoy.py first.\n')
+if not os.path.exists(PLOT_DIR):
+    print('\n\nHaa4b_makeMCtoy.py error! '+PLOT_DIR+' does not exist. Run merge_file_script_mctoy.py first.\n')
     sys.exit()
 ## Make sub-directories for output toy ROOT and JSON files
-if not os.path.exists(PLOT_DIR):
-    os.mkdir(PLOT_DIR)
+if not os.path.exists(PLOT_DIR+'/toys'):
+    os.mkdir(PLOT_DIR+'/toys')
 if not os.path.exists(JSON_DIR):
     os.system('mkdir -p '+JSON_DIR)
 
@@ -78,6 +85,9 @@ def reset_bin_errors(hist_in, hist_ref, eff_wgt=None):
     if not eff_wgt: eff_wgt = get_eff_weight(hist_ref)
     for iX in range(1, nX+1):
         for iY in range(1, nY+1):
+            ## Reset negative bins to 0
+            if hist_in.GetBinContent(iX,iY) < 0.0:
+                hist_in.SetBinContent(iX,iY, 0.0)
             val_in  = hist_in.GetBinContent(iX,iY)
             val_ref = hist_ref.GetBinContent(iX,iY)
             err_in  = hist_in.GetBinError(iX,iY)
@@ -286,15 +296,15 @@ def get_bin_expectation(hist, iX, iY, eff_wgt=1.0):
 
 
 ## Function to generate toys
-def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
+def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}, PF=None):
     if VERBOSE: print('\ntoys_generator: Throwing %d toys from %s' % (nToy, hist.GetName()))
     str_repl = None
-    for substr in ['_MCsmooth1_','_MCsmooth2_','_Data_']:
+    for substr in ['_MCsmooth1_','_MCsmooth2_','_Datasmooth1_','_Datasmooth2_']:
         if substr in hist.GetName():
             str_repl = substr
             break
     if str_repl == None:
-        print('\n\nWhy are you throwing toys from non-smoothed MC?!? Quitting.\n')
+        print('\n\nWhy are you throwing toys from non-smoothed MC or Data?!? Quitting.\n')
         sys.exit()
     
     ## Create histogram to save average of toys and their variance squared
@@ -309,14 +319,14 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
 
     ## Loop and generate the toys
     for iT in range(nToy):
-        filename = hist.GetName().split("_pnet")[0].replace(str_repl, str_repl+'toy%d_' % iT)
+        filename = hist.GetName().split('_'+WP)[0].replace(str_repl, str_repl+'toy%d_' % iT)
         ## Create new ROOT file (root_cmd = "RECREATE"), or add to existing ("UPDATE")
         output_file = R.TFile(output_dir+"/"+filename+".root", root_cmd)
         out_file_sig = {}
         for key in avg_toy_hist_sig.keys():
             out_file_sig[key] = R.TFile(output_file.GetName().replace('toy%d' % iT, 'toy%d_%s' % (iT, key)), root_cmd)
         if iT == 0:
-            print('Writing toy #%d to %s' % (iT, output_dir+"/"+filename+".root"))
+            print('Writing %s toy #%d to %s' % (PF, iT, output_dir+"/"+filename+".root"))
         if (iT % 100) == 0:
             print('  - Starting toy %d/%d' % (iT, nToy))
         toy_hist = hist.Clone(hist.GetName().replace(str_repl, str_repl+'toy%d_' % iT))
@@ -326,6 +336,7 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
         for iX in range(1, hist.GetNbinsX()+1):
             for iY in range(1, hist.GetNbinsY()+1):
                 expected = hist.GetBinContent(iX,iY)
+                #print('Histogram %s bin (%d,%d) = (%.1f,%.1f) has expected %.3f' % (hist.GetName(), iX, iY, hist.GetXaxis().GetBinCenter(iX), hist.GetYaxis().GetBinCenter(iY), expected))
                 fluctuated = np.random.poisson(expected)
                 toy_hist.SetBinContent(iX,iY,fluctuated)
                 toy_hist.SetBinError(iX,iY,np.sqrt(fluctuated))
@@ -333,7 +344,7 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
                     mA = key[3:5]
                     sBr = int(key[-3:])*0.001
                     assert (mA in MASSESA and int(key[-3:]) in SIGINJ[mA]), 'Haa4b_makeMCtoy.py: mA = %s, sBr = %d' % (mA, sBr)
-                    exp_sig = expected + h_sigs[mA].GetBinContent(iX,iY)*sBr
+                    exp_sig = expected + h_sigs[mA][PF].GetBinContent(iX,iY)*sBr
                     fluc_sig = np.random.poisson(exp_sig)
                     toy_hist_sig[key].SetBinContent(iX,iY,fluc_sig)
                     toy_hist_sig[key].SetBinError(iX,iY,np.sqrt(fluc_sig))
@@ -358,7 +369,7 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
 
     ## Store variance of toys w.r.t. average
     for jT in range(nToy):
-        filename = hist.GetName().split("_pnet")[0].replace(str_repl, str_repl+'toy%d_' % jT)
+        filename = hist.GetName().split('_'+WP)[0].replace(str_repl, str_repl+'toy%d_' % jT)
         ## Reopen ROOT file with toy
         output_file = R.TFile(output_dir+"/"+filename+".root", "OPEN")
         toy_hist = output_file.Get(hist.GetName().replace(str_repl, str_repl+'toy%d_' % jT))
@@ -383,7 +394,7 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
     avg_toy_hist_sig['bkg'] = avg_toy_hist
     avg_toy_hist_sig['bkgVar'] = avg_toy_varSq
     return avg_toy_hist_sig
-## End function: toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={})
+## End function: toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}, PF=None)
 
 
 
@@ -393,51 +404,35 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}):
 
 print("Running Haa4b_makeMCtoy.py for the following category:", CAT)
 
-## "Super-category" defines some directory / file names
+## "Super-category" defines hadronic directory / file names
 superCat = CAT
-## Most categories used WP60, a couple use WP60
+for supr in ['gg0l','VBFjj','Vjj']:
+    if CAT.startswith(supr):
+        superCat = supr+'Incl'
+## Most categories used WP60; only gg0l and VBFjj use WP40
 WP = 'WP60'
-for supr in ['gg0l','VBFjj']:
-    if supr in CAT:
-        superCat = supr
-        WP = 'WP40'
+if CAT.startswith('gg0l') or CAT.startswith('VBFjj'):
+    WP = 'WP40'
 
 ## Different categories use different sets of background samples
 samps = ['Data']
-if CAT.startswith('gg0l') or CAT.startswith('VBFjj'):
+sigs = None
+if CAT.startswith('gg0l') or CAT.startswith('VBFjj') or CAT.startswith('Vjj') or CAT.startswith('tt0l'):
     samps.append('MC')  ## Background MC already summed
-    sigs = ['ggH','VBFH','WH','ZH','ttH']
-    if 'VBFjj' in CAT:
-        print('\nWARNING!!! Only VBFH signal available for VBFjj categories. Need to add others!!!\n')
-        sigs = ['VBFH']
+    sigs = ['ggH','VBFH','WH','ZH','ttH','SumH']
     for sig in sigs:
         for mA in MASSESA:
             samps.append(sig+'toaato4b_mA_'+str(mA))
 
 elif CAT.startswith('Lep'):
-    CATL = CAT[0:5]  ## i.e. LepHi or LepLo
-    if CATL.endswith('In'):
-        CATL = 'LepIncl'
-    samps = samps+['Wlv','TT1l']
-    sigs  = ['WH','ttH']
-    if CAT.startswith('LepHi') or CAT.startswith('LepIncl'):
-        samps = samps+['Zll','TT2l','ZZ']
-        sigs  = sigs+['ZH']  ## Temporary until all signals are included in all modes
-    if CAT == 'LepLoA':
-        sigs.remove('WH')  ## Temporary until all signals are included in all modes
-    if CAT == 'LepLoB':
-        sigs.remove('ttH')  ## Temporary until all signals are included in all modes
-    if CAT == 'LepHiC':
-        sigs.remove('WH')  ## Temporary until all signals are included in all modes
-    if CAT == 'LepLoE':
-        samps = samps+['TT2l']  ## Temporary until TT2l background is included in 1l categories
-    if CAT == 'LepHiF':
-        sigs.remove('ZH')  ## Temporary until all signals are included in all modes
-        samps.remove('Zll')
-        samps.remove('ZZ')
-    if CAT == 'LepLoF':
-        sigs.append('ZH')  ## Temporary until all signals are included in all modes
-        samps = samps+['Zll','ZZ']  ## Temporary until Zll and ZZ backgrounds are included in 1l categories
+    if CAT.startswith('LepHi') or CAT.startswith('LepLo'):
+        CATL = CAT[0:5]  ## i.e. LepHi or LepLo, without A, B, C ... modification
+    elif CAT == 'LepIncl':
+        CATL = CAT
+    else:
+        assert False, '\nInvalid CAT = %s!!! Quitting.' % CAT
+    samps.append('MC')  ## Background MC already summed
+    sigs = ['WH','ZH','ttH','SumH']
     for sig in sigs:
         for mA in MASSESA:
             samps.append(sig+'toaato4b_mA_'+str(mA))
@@ -449,27 +444,26 @@ else:
 print('\nIn Haa4b_makeMCtoy.py, looking for the following samples:')
 print(samps)
 
-base_pth = 'raw_inputs/2D_in_merged_%s/' % superCat
-
+base_pth_in = 'raw_inputs/%s/%s/2D_in_merged_%s/' % (YEAR, DATE, superCat)
 
 # step 1, merge bkg MC, set bin errors based on effective yields
-h_data_pass = None
-h_data_fail = None
-h_MC_pass = None
-h_MC_fail = None
-h_sig_pass = {}
-h_sig_fail = {}
+h_orig,h_sig = {},{}
+for DM in DMs:
+    h_orig[DM] = {}
+    for PF in PFs: h_orig[DM][PF] = None
 for mA in MASSESA:
-    h_sig_pass[mA] = None
-    h_sig_fail[mA] = None
+    h_sig[mA] = {}
+    for PF in PFs: h_sig[mA][PF] = None
 
 ## Loop over samples to get pass / fail histograms
+print(samps)
+
 for samp in samps:
-    filepath = base_pth+superCat+'_'+samp+'_'+YEAR+'.root'
+    filepath = base_pth_in+superCat+'_'+samp+'_'+YEAR+'.root'
     print(f"add {filepath}")
-    hname = CAT+'_'+samp+'_'+YEAR+'_pnet_'+WP
-    pass_name = hname+'_Pass_Nom'
-    fail_name = hname+'_Fail_Nom'
+    hname_base = CAT+'_'+samp+'_'+YEAR+'_'+MHREG+'_'+MAREG+'_'+WP
+    hname = {}
+    for PF in PFs: hname[PF] = hname_base+'_'+PF+'_Nom'
     in_file = R.TFile.Open(filepath)
 
     ## Store signal histograms
@@ -477,212 +471,191 @@ for samp in samps:
     for mA in MASSESA:
         if 'Htoaato4b_mA_'+mA in filepath:
             isSignal = True
-            if h_sig_pass[mA] == None:
-                h_sig_pass[mA] = in_file.Get(pass_name)
-                h_sig_fail[mA] = in_file.Get(fail_name)
-                h_sig_pass[mA].SetDirectory(0)
-                h_sig_fail[mA].SetDirectory(0)
-                for sig in ['ggH','VBFH','WH','ZH','ttH']:
-                    h_sig_pass[mA].SetName(h_sig_pass[mA].GetName().replace(sig+'toaa','Htoaa'))
-                    h_sig_fail[mA].SetName(h_sig_fail[mA].GetName().replace(sig+'toaa','Htoaa'))
-                if VERBOSE: print('  * Creating %s from %s (integral = %.1f)' % (h_sig_pass[mA].GetName(), pass_name, h_sig_pass[mA].Integral()))
-            else:
-                h_sig_pass[mA].Add(in_file.Get(pass_name))
-                h_sig_fail[mA].Add(in_file.Get(fail_name))
-                if VERBOSE: print('  * Adding %s to %s (new integral = %.1f)' % (pass_name, h_sig_pass[mA].GetName(), h_sig_pass[mA].Integral()))
+            ## Write out individual signal component histograms
+            out_file_sig = R.TFile('%s/%s_%s_%s_%s_%s.root' % (PLOT_DIR, CAT, samp, YEAR, MHREG, MAREG), 'RECREATE')
+            for PF in PFs:
+                out_file_sig.cd()
+                in_file.Get(hname[PF]).Write()
+                if h_sig[mA][PF] == None:
+                    h_sig[mA][PF] = in_file.Get(hname[PF])
+                    h_sig[mA][PF].SetDirectory(0)
+                    for sig in sigs:
+                        h_sig[mA][PF].SetName(h_sig[mA][PF].GetName().replace(sig+'toaa','Htoaa'))
+                    if VERBOSE: print('  * Creating %s from %s (integral = %.1f)' % (h_sig[mA][PF].GetName(), hname[PF], h_sig[mA][PF].Integral()))
+                elif not 'SumH':
+                    h_sig[mA][PF].Add(in_file.Get(hname[PF]))
+                    if VERBOSE: print('  * Adding %s to %s (new integral = %.1f)' % (hname[PF], h_sig[mA][PF].GetName(), h_sig[mA][PF].Integral()))
+            ## End loop: for PF in PFs
+            out_file_sig.Write()
+            out_file_sig.Close()
+            del out_file_sig
         ## End conditional: if 'Htoaato4b_mA_'+mA in filepath
     ## End loop: for mA in MASSESA
     if isSignal:
         continue
 
-    h_in_pass = in_file.Get(pass_name)
-    h_in_fail = in_file.Get(fail_name)
+    h_in = {}
+    for PF in PFs: h_in[PF] = in_file.Get(hname[PF])
 
-    ## For gg0l, scale background MC WP60 --> WP40
-    if 'gg0l' in CAT and samp != 'Data' and not 'Htoaato4b' in samp:
-        h_in_pass_WP60 = in_file.Get(pass_name.replace('WP40','WP60'))
-        h_in_fail_WP60 = in_file.Get(fail_name.replace('WP40','WP60'))
-        WP40_yield_pass = h_in_pass.Integral()
-        WP40_yield_fail = h_in_fail.Integral()
-        h_in_pass.Scale(0)
-        h_in_fail.Scale(0)
-        h_in_pass.Add(h_in_pass_WP60)
-        h_in_fail.Add(h_in_fail_WP60)
-        pass_SF = WP40_yield_pass / h_in_pass_WP60.Integral()
-        fail_SF = WP40_yield_fail / h_in_fail_WP60.Integral()
-        print('Scaling %s by %.3f from %.1f to %.1f' % (h_in_pass.GetName(), pass_SF, h_in_pass_WP60.Integral(), WP40_yield_pass))
-        print('Scaling %s by %.3f from %.1f to %.1f' % (h_in_fail.GetName(), fail_SF, h_in_fail_WP60.Integral(), WP40_yield_fail))
-        h_in_pass.Scale(pass_SF)
-        h_in_fail.Scale(fail_SF)
-    ## End conditional: if 'gg0l' in CAT and samp != 'Data' and not 'Htoaato4b' in samp
+    ## For WP40 samples (gg0l and VBFjj), scale background MC WP60 --> WP40
+    if WP == 'WP40' and samp != 'Data' and not 'Htoaato4b' in samp:
+        for PF in PFs:
+            h_in_WP60  = in_file.Get(hname[PF].replace('WP40','WP60'))
+            WP40_yield = h_in[PF].Integral()
+            h_in[PF].Scale(0)
+            h_in[PF].Add(h_in_WP60)
+            SF = WP40_yield / h_in_WP60.Integral()
+            print('Scaling %s by %.3f from %.1f to %.1f' % (h_in[PF].GetName(), SF, h_in_WP60.Integral(), WP40_yield))
+            h_in[PF].Scale(SF)
+            del h_in_WP60
+        ## End loop: for PF in PFs
+    ## End conditional: if WP == 'WP40' and samp != 'Data' and not 'Htoaato4b' in samp
 
     ## Get the input histograms, sum background MC
-    if samp == 'Data':
-        h_data_pass = h_in_pass.Clone(pass_name)
-        h_data_pass.SetDirectory(0)
-        h_data_fail = h_in_fail.Clone(fail_name)
-        h_data_fail.SetDirectory(0)
-    elif ((h_MC_pass is None) and (h_MC_fail is None)):
-        h_MC_pass = h_in_pass.Clone(pass_name.replace('_%s_' % samp, '_MC_'))
-        h_MC_pass.SetDirectory(0)
-        h_MC_fail = h_in_fail.Clone(fail_name.replace('_%s_' % samp, '_MC_'))
-        h_MC_fail.SetDirectory(0)
-    else:
-        h_MC_pass.Add(h_in_pass)
-        h_MC_fail.Add(h_in_fail)
+    for PF in PFs:
+        if samp == 'Data':
+            h_orig['Data'][PF] = h_in[PF].Clone(hname[PF])
+            h_orig['Data'][PF].SetDirectory(0)
+        elif h_orig['MC'][PF] is None:
+            h_orig['MC'][PF] = h_in[PF].Clone(hname[PF].replace('_%s_' % samp, '_MC_'))
+            h_orig['MC'][PF].SetDirectory(0)
+        else:
+            h_orig['MC'][PF].Add()
+    ## End loop: for PF in PFs
 ## End loop: for samp in samps
 
 ## Scale MC to data
-h_MC_pass = scale_to_ref(h_MC_pass, h_data_pass)
-h_MC_fail = scale_to_ref(h_MC_fail, h_data_fail)
-
+for PF in PFs: h_orig['MC'][PF] = scale_to_ref(h_orig['MC'][PF], h_orig['Data'][PF])
 
 ## Set minimum per-bin errors to reflect effective MC event weights
-eff_wgt_pass = get_eff_weight(h_MC_pass)
-eff_wgt_fail = get_eff_weight(h_MC_fail)
-nX = h_MC_pass.GetNbinsX()
-nY = h_MC_pass.GetNbinsY()
-if (nX != h_MC_fail.GetNbinsX() or nY != h_MC_fail.GetNbinsY()):
-    print('\nERROR!!! %s is %dx%d, %s is not! Quitting.' % (h_MC_pass.GetName(), nX, nY, h_MC_fail.GetName()))
-    sys.exit()
-h_MC_pass = reset_bin_errors(h_MC_pass, h_MC_pass, eff_wgt_pass)
-h_MC_fail = reset_bin_errors(h_MC_fail, h_MC_fail, eff_wgt_fail)
+eff_wgt = {}
+for DM in DMs: eff_wgt[DM] = {}
+for PF in PFs:
+    eff_wgt['Data'][PF] = 1.0  ## Effective "weight" of data is 1
+    eff_wgt['MC'][PF] = get_eff_weight(h_orig['MC'][PF])
+nX = h_orig['MC']['Pass'].GetNbinsX()
+nY = h_orig['MC']['Pass'].GetNbinsY()
+for PF in PFs:
+    h_orig['MC'][PF] = reset_bin_errors(h_orig['MC'][PF], h_orig['MC'][PF], eff_wgt['MC'][PF])
+    for DM in DMs:
+        if (nX != h_orig[DM][PF].GetNbinsX() or nY != h_orig[DM][PF].GetNbinsY()):
+            assert False, '\nERROR!!! %s is %dx%d, %s is not! Quitting.' % (h_orig['MC']['Pass'].GetName(), nX, nY, h_orig[DM][PF].GetName())
 
-
-## Write h_MC_pass and h_MC_fail and signal, without smoothing, to ROOT file
-out_file_dataMC = R.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CAT, CAT, TOYSOURCE, NTOYS), 'RECREATE')
-h_data_pass.Write()
-h_data_fail.Write()
-h_MC_pass.Write()
-h_MC_fail.Write()
-for mA in h_sig_pass.keys():
-    h_sig_pass[mA].Write()
-    h_sig_fail[mA].Write()
+## Write h_orig and signal, without smoothing, to ROOT file
+out_file_dataMC = R.TFile('%s/%s_%s_%dtoys_Data_MC.root' % (PLOT_DIR, CAT, TOYSOURCE, NTOYS), 'RECREATE')
+for PF in PFs:
+    for DM in DMs:         h_orig[DM][PF].Write()
+    for mA in h_sig.keys(): h_sig[mA][PF].Write()
 out_file_dataMC.Write()
 out_file_dataMC.Close()
 
 # step 2, smooth, set negative bins to 0, and set errors based on effective yields
-h_MCsmooth1_pass = None
-h_MCsmooth1_fail = None
-if h_MC_pass!=None and h_MC_fail!=None:
-    h_MCsmooth1_pass=h_MC_pass.Clone(h_MC_pass.GetName().replace('_MC_','_MCsmooth1_'))
-    h_MCsmooth1_fail=h_MC_fail.Clone(h_MC_fail.GetName().replace('_MC_','_MCsmooth1_'))
-    ## Smooth until there are no large statistical variations in 3x3 or 5x5 regions (up to 2 times)
-    nSmooth_pass,nSmooth_fail = 0,0
-    while((compute_max_pull(h_MCsmooth1_pass, 1, eff_wgt_pass) > SMOOTH_CUT or
-           compute_max_pull(h_MCsmooth1_pass, 2, eff_wgt_pass) > SMOOTH_CUT) and nSmooth_pass < 2):
-        h_MCsmooth1_pass.Smooth(1)
-        h_MCsmooth1_pass = reset_bin_errors(h_MCsmooth1_pass, h_MC_pass, eff_wgt_pass)
-        nSmooth_pass += 1
-    while((compute_max_pull(h_MCsmooth1_fail, 1, eff_wgt_fail) > SMOOTH_CUT or
-           compute_max_pull(h_MCsmooth1_fail, 2, eff_wgt_fail) > SMOOTH_CUT) and nSmooth_fail < 2):
-        h_MCsmooth1_fail.Smooth(1)
-        h_MCsmooth1_fail = reset_bin_errors(h_MCsmooth1_fail, h_MC_fail, eff_wgt_fail)
-        nSmooth_fail += 1
-    print('\nSmoothed %s %d times, %s %d times' % (h_MCsmooth1_pass.GetName(), nSmooth_pass,
-                                                   h_MCsmooth1_fail.GetName(), nSmooth_fail))
-    h_MCsmooth1_pass = scale_to_ref(h_MCsmooth1_pass, h_data_pass)
-    h_MCsmooth1_fail = scale_to_ref(h_MCsmooth1_fail, h_data_fail)
-else:
-    print('\n\nERROR!!! Either h_MC_pass or h_MC_fail does not exist! Quitting.\n')
-    sys.exit()
+h_smooth1,h_smooth2 = {},{}
+for DM in DMs:
+    h_smooth1[DM],h_smooth2[DM] = {},{}
+    for PF in PFs:
+        if h_orig[DM][PF] == None:
+            assert False, "\n\nERROR!!! h_orig[%s][%s] does not exist! Quitting.\n" % (DM, PF)
+        h_smooth1[DM][PF] = None
+        h_smooth1[DM][PF] = h_orig[DM][PF].Clone(h_orig[DM][PF].GetName().replace('_%s_' % DM,'_%ssmooth1_' % DM))
+        ## Smooth until there are no large statistical variations in 3x3 or 5x5 regions (up to 2 times)
+        nSmooth = 0
+        while((compute_max_pull(h_smooth1[DM][PF], 1, eff_wgt[DM][PF]) > SMOOTH_CUT or
+               compute_max_pull(h_smooth1[DM][PF], 2, eff_wgt[DM][PF]) > SMOOTH_CUT) and nSmooth < 2):
+            h_smooth1[DM][PF].Smooth(1)
+            h_smooth1[DM][PF] = reset_bin_errors(h_smooth1[DM][PF], h_orig[DM][PF], eff_wgt[DM][PF])
+            nSmooth += 1
+        print('\nSmoothed %s %d times' % (h_smooth1[DM][PF].GetName(), nSmooth))
+        h_smooth1[DM][PF] = scale_to_ref(h_smooth1[DM][PF], h_orig['Data'][PF])
 
+        # Additional manual regional averaging for bins with large uncertainty compared to yields
+        h_smooth2[DM][PF] = h_smooth1[DM][PF].Clone(h_smooth1[DM][PF].GetName().replace('smooth1','smooth2'))
 
-# Additional manual regional averaging for bins with large uncertainty compared to yields
-h_MCsmooth2_pass = h_MCsmooth1_pass.Clone(h_MCsmooth1_pass.GetName().replace('smooth1','smooth2'))
-h_MCsmooth2_fail = h_MCsmooth1_fail.Clone(h_MCsmooth1_fail.GetName().replace('smooth1','smooth2'))
+        # Loop over bins in 2D distribution
+        for iX in range(1, nX+1):
+            for iY in range(1, nY+1):
+                # Set error using un-smoothed bin error or effective weight (whichever is larger)
+                bin_wgt = pow(h_orig[DM][PF].GetBinError(iX,iY),2) / max(eff_wgt[DM][PF], h_orig[DM][PF].GetBinContent(iX,iY))
+                bin_wgt = max(bin_wgt, eff_wgt[DM][PF])
+                bin_err = np.sqrt(max(1.0, h_smooth1[DM][PF].GetBinContent(iX,iY) / bin_wgt))*bin_wgt
+                h_smooth1[DM][PF].SetBinError(iX,iY, bin_err)
+                exp = get_bin_expectation(h_smooth1[DM][PF], iX, iY, eff_wgt[DM][PF])
+                h_smooth2[DM][PF].SetBinContent(iX,iY, exp[0])
+                h_smooth2[DM][PF].SetBinError(iX,iY, exp[1])
+            ## End loop: for iY in range(1, nY+1)
+        ## End loop: for iX in range(1, nX+1)
+        h_smooth2[DM][PF] = scale_to_ref(h_smooth2[DM][PF], h_orig['Data'][PF])
 
-# Loop over bins in 2D distribution
-for iX in range(1, nX+1):
-    for iY in range(1, nY+1):
-        # Set negative bins to 0
-        if h_MCsmooth1_pass.GetBinContent(iX,iY) < 0:
-            h_MCsmooth1_pass.SetBinContent(iX,iY,0)
-        if h_MCsmooth1_fail.GetBinContent(iX,iY,0) < 0:
-            h_MCsmooth1_fail.SetBinContent(iX,iY, 0)
-        # Set error using un-smoothed bin error or effective weight (whichever is larger)
-        bin_wgt_pass = pow(h_MC_pass.GetBinError(iX,iY),2) / max(eff_wgt_pass, h_MC_pass.GetBinContent(iX,iY))
-        bin_wgt_fail = pow(h_MC_fail.GetBinError(iX,iY),2) / max(eff_wgt_fail, h_MC_fail.GetBinContent(iX,iY))
-        bin_wgt_pass = max(bin_wgt_pass, eff_wgt_pass)
-        bin_wgt_fail = max(bin_wgt_fail, eff_wgt_fail)
-        bin_err_pass = np.sqrt(max(1.0, h_MCsmooth1_pass.GetBinContent(iX,iY)/bin_wgt_pass))*bin_wgt_pass
-        bin_err_fail = np.sqrt(max(1.0, h_MCsmooth1_fail.GetBinContent(iX,iY)/bin_wgt_fail))*bin_wgt_fail
-        h_MCsmooth1_pass.SetBinError(iX,iY,bin_err_pass)
-        h_MCsmooth1_fail.SetBinError(iX,iY,bin_err_fail)
-        pass_exp = get_bin_expectation(h_MCsmooth1_pass, iX, iY, eff_wgt_pass)
-        fail_exp = get_bin_expectation(h_MCsmooth1_fail, iX, iY, eff_wgt_fail)
-        h_MCsmooth2_pass.SetBinContent(iX,iY, pass_exp[0])
-        h_MCsmooth2_fail.SetBinContent(iX,iY, fail_exp[0])
-        h_MCsmooth2_pass.SetBinError(iX,iY, pass_exp[1])
-        h_MCsmooth2_fail.SetBinError(iX,iY, fail_exp[1])
-    ## End loop: for iY in range(1, nY+1)
-## End loop: for iX in range(1, nX+1)
-h_MCsmooth2_pass = scale_to_ref(h_MCsmooth2_pass, h_data_pass)
-h_MCsmooth2_fail = scale_to_ref(h_MCsmooth2_fail, h_data_fail)
+    ## End loop: for PF in PFs
+## End loop: for DM in DMs
+
 
 # Also create rounded integer version for "nominal" pseudo-data
-h_MCrounded_pass = h_MCsmooth2_pass.Clone(h_MCsmooth2_pass.GetName().replace('smooth2','rounded'))
-h_MCrounded_fail = h_MCsmooth2_fail.Clone(h_MCsmooth2_fail.GetName().replace('smooth2','rounded'))
-h_MCrounded_pass = round_bins(h_MCsmooth2_pass, h_MCrounded_pass)
-h_MCrounded_fail = round_bins(h_MCsmooth2_fail, h_MCrounded_fail)
-h_MCrounded_sig_pass = {}
-h_MCrounded_sig_fail = {}
-for mA in h_sig_pass.keys():
-    for sInj in SIGINJ[mA]:
-        key = 'mA_%s_sigBr_%03d' % (mA, sInj)
-        h_MCrounded_sig_pass[key] = h_MCsmooth2_pass.Clone(h_MCsmooth2_pass.GetName().replace('smooth2','rounded_'+key))
-        h_MCrounded_sig_fail[key] = h_MCsmooth2_fail.Clone(h_MCsmooth2_fail.GetName().replace('smooth2','rounded_'+key))
-        h_MCrounded_sig_pass[key].Add(h_sig_pass[mA], sInj*0.01)
-        h_MCrounded_sig_fail[key].Add(h_sig_fail[mA], sInj*0.01)
-        h_MCrounded_sig_pass[key] = round_bins(h_MCrounded_sig_pass[key].Clone(key+'_pass_tmp'), h_MCrounded_sig_pass[key])
-        h_MCrounded_sig_fail[key] = round_bins(h_MCrounded_sig_fail[key].Clone(key+'_fail_tmp'), h_MCrounded_sig_fail[key])
+h_rounded,h_rounded_sig = {},{}
+for DM in DMs:
+    h_rounded[DM],h_rounded_sig[DM] = {},{}
+    for PF in PFs:
+        h_rounded[DM][PF] = h_smooth2[DM][PF].Clone(h_smooth2[DM][PF].GetName().replace('smooth2','rounded'))
+        h_rounded[DM][PF] = round_bins(h_smooth2[DM][PF], h_rounded[DM][PF])
 
-## Write rounded MC to its own "toy" file
-out_MCr_name = h_MCrounded_pass.GetName().split("_pnet")[0]
-out_fileMCr = R.TFile('plots/'+CAT+'/'+out_MCr_name+'.root', 'RECREATE')
-h_MCrounded_pass.Write()
-h_MCrounded_fail.Write()
-out_fileMCr.Write()
-out_fileMCr.Close()
-out_fileMCr_sig = {}
-for key in h_MCrounded_sig_pass.keys():
-    out_fileMCr_sig[key] = R.TFile(out_fileMCr.GetName().replace('rounded','rounded_'+key), 'RECREATE')
-    h_MCrounded_sig_pass[key].Write()
-    h_MCrounded_sig_fail[key].Write()
-    out_fileMCr_sig[key].Write()
-    out_fileMCr_sig[key].Close()
+        h_rounded_sig[DM][PF] = {}
+        for mA in h_sig.keys():
+            for sInj in SIGINJ[mA]:
+                key = 'mA_%s_sigBr_%03d' % (mA, sInj)
+                h_rounded_sig[DM][PF][key] = h_smooth2[DM][PF].Clone(h_smooth2[DM][PF].GetName().replace('smooth2','rounded_'+key))
+                h_rounded_sig[DM][PF][key].Add(h_sig[mA][PF], sInj*0.01)
+                h_rounded_sig[DM][PF][key] = round_bins(h_rounded_sig[DM][PF][key].Clone(key+'_'+PF+'_tmp'), h_rounded_sig[DM][PF][key])
+            ## End loop: for sInj in SIGINJ[mA]
+        ## End loop: for mA in h_sig.keys()
+    ## End loop: for PF in PFs
+## End loop: for DM in DMs
+
+## Write rounded template to its own "toy" file
+for DM in DMs:
+    out_round_name = h_rounded[DM]['Pass'].GetName().split('_'+WP)[0]
+    out_file_round = R.TFile(PLOT_DIR+'/'+out_round_name+'.root', 'RECREATE')
+    for PF in PFs: h_rounded[DM][PF].Write()
+    out_file_round.Write()
+    out_file_round.Close()
+    out_file_round_sig = {}
+    for key in h_rounded_sig[DM]['Pass'].keys():
+        out_file_round_sig[key] = R.TFile(out_file_round.GetName().replace('rounded','rounded_'+key), 'RECREATE')
+        for PF in PFs: h_rounded_sig[DM][PF][key].Write()
+        out_file_round_sig[key].Write()
+        out_file_round_sig[key].Close()
+    del out_file_round
+    del out_file_round_sig
+## End loop: for DM in DMs
 
 
 ## Generate toys, get average toy occupancy and variance
-avg_toyMC_pass = None
-avg_toyMC_fail = None
-avg_toyData_pass = None
-avg_toyData_fail = None
-if doToysMC:
-    print('\nRemoving all files matching plots/'+CAT+'/toys/*MCsmooth2_toy*')
-    for fl in glob.glob('plots/'+CAT+'/toys/*MCsmooth2_toy*'):
+avg_toy = {}
+for DM in DMs:
+    avg_toy[DM] = {}
+    for PF in PFs: avg_toy[DM][PF] = None
+for DM in DMs:
+    if (DM == 'MC' and not doToysMC) or (DM == 'Data' and not doToysData):
+        continue
+    print('\nRemoving all files matching '+PLOT_DIR+'/toys/*'+DM+'smooth2_toy*'+MHREG+'_'+MAREG+'*')
+    for fl in glob.glob(PLOT_DIR+'/toys/*'+DM+'smooth2_toy*'+MHREG+'_'+MAREG+'*'):
         os.remove(fl)
-    avg_toyMC_pass = toys_generator(h_MCsmooth2_pass, NTOYS, PLOT_DIR, "RECREATE", h_sig_pass)
-    avg_toyMC_fail = toys_generator(h_MCsmooth2_fail, NTOYS, PLOT_DIR, "UPDATE", h_sig_fail)
-if doToysData:
-    print('\nRemoving all files matching plots/'+CAT+'/toys/*Data_toy*')
-    for fl in glob.glob('plots/'+CAT+'/toys/*Data_toy*'):
-        os.remove(fl)
-    avg_toyData_pass = toys_generator(h_data_pass, NTOYS, PLOT_DIR, "RECREATE", h_sig_pass)
-    avg_toyData_fail = toys_generator(h_data_fail, NTOYS, PLOT_DIR, "UPDATE", h_sig_fail)
+    for PF in PFs:
+        ROOT_cmd = 'RECREATE' if PF == 'Pass' else 'UPDATE'
+        avg_toy[DM][PF] = toys_generator(h_smooth2[DM][PF], NTOYS, PLOT_DIR+'/toys', ROOT_cmd, h_sig, PF)
+## End loop: for DM in DMs
 
 
-## Write h_MC_pass and h_MC_fail and average toy histograms to ROOT file
-out_file_dataMC = R.TFile('plots/%s/%s_%s_%dtoys_Data_MC.root' % (CAT, CAT, TOYSOURCE, NTOYS), 'UPDATE')
-wrt_hists = [[h_MCsmooth1_pass, h_MCsmooth1_fail],
-             [h_MCsmooth2_pass, h_MCsmooth2_fail],
-             [h_MCrounded_pass, h_MCrounded_fail]]
-if doToysMC:
-    for key in avg_toyMC_pass.keys():
-        wrt_hists += [[avg_toyMC_pass[key], avg_toyMC_fail[key]]]
-if doToysData:
-    for key in avg_toyData_pass.keys():
-        wrt_hists += [[avg_toyData_pass[key], avg_toyData_fail[key]]]
+## Write h_orig and average toy histograms to ROOT file
+out_file_dataMC = R.TFile('%s/%s_%s_%dtoys_Data_MC.root' % (PLOT_DIR, CAT, TOYSOURCE, NTOYS), 'UPDATE')
+wrt_hists  = [[h_smooth1[DM][PF] for PF in PFs] for DM in DMs]
+wrt_hists += [[h_smooth2[DM][PF] for PF in PFs] for DM in DMs]
+wrt_hists += [[h_rounded[DM][PF] for PF in PFs] for DM in DMs]
+
+for DM in DMs:
+    if (DM == 'MC' and not doToysMC) or (DM == 'Data' and not doToysData):
+        continue
+    for key in avg_toy[DM]['Pass'].keys():
+        wrt_hists += [[avg_toy[DM][PF][key] for PF in PFs]]
 
 for wrt_hist in wrt_hists:
     if VERBOSE: print('\nIn Haa4b_makeMCtoy_ggH.py, writing %s (and "fail")' % wrt_hist[0].GetName())
@@ -690,7 +663,7 @@ for wrt_hist in wrt_hists:
     for ii in [0,1]:
         wrt_hist[ii].Write()
         ## Also write rebinned versions and ratios for simpler analysis later
-        for rebin in range(2,6):
+        for rebin in [2,3,4]:
             if ii == 0:
                 wrt_rebin[str(rebin)] = [None,None]
             wrt_rebin[str(rebin)][ii] = wrt_hist[ii].Clone(wrt_hist[ii].GetName()+'_rebin%d' % rebin)
@@ -715,60 +688,45 @@ out_file_dataMC.Close()
 del out_file_dataMC
 
 
-## Write JSON for rounded MC template
-print('\nWriting '+JSON_DIR+'/'+CAT+'_Htoaato4b_MCrounded.json')
-with open('jsons/%s_Htoaato4b_MC.json' % CATL, 'r') as jf:
-    jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
-jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_MCrounded_'+YEAR
-jsonMC['NAME'] = CAT+'_Htoaato4b'
-with open(JSON_DIR+'/'+CAT+'_Htoaato4b_MCrounded.json', 'w') as jf:
-    json.dump(jsonMC, jf, indent=2)
-for key in h_MCrounded_sig_pass.keys():
-    jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_MCrounded_'+key+'_'+YEAR
-    with open(JSON_DIR+'/'+CAT+'_Htoaato4b_MCrounded_'+key+'.json', 'w') as jf:
-        json.dump(jsonMC, jf, indent=2)
-## Write JSON for rounded data
-print('Writing '+JSON_DIR+'/'+CAT+'_Htoaato4b_Data.json')
-with open('jsons/%s_Htoaato4b_Data.json' % CATL, 'r') as jf:
-    jsonData = json.load(jf)  # `data` is now a Python dictionary or list
-jsonData['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_Data_'+YEAR
-jsonData['NAME'] = CAT+'_Htoaato4b'
-with open(JSON_DIR+'/'+CAT+'_Htoaato4b_Data.json', 'w') as jf:
-    json.dump(jsonData, jf, indent=2)
+## Write JSONs for data and rounded data and MC templates
+for dset in ['Data','Datarounded','MCrounded']:
+    DM = 'Data' if dset.startswith('Data') else 'MC'
+    print('\nWriting '+JSON_DIR+'/'+CAT+'_Htoaato4b_'+dset+'.json')
+    with open('jsons/%s_Htoaato4b_%s.json' % (CATL, DM), 'r') as jf:
+        jsonDM = json.load(jf)  # `data` is now a Python dictionary or list
+        jsonDM['PROCESSES']["data_obs"]['ALIAS'] = '%s_%s_%s_%s_%s' % (CAT, dset, YEAR, MHREG, MAREG)
+        jsonDM['NAME'] = CAT+'_Htoaato4b'
+    with open('%s/%s_Htoaato4b_%s_%s_%s.json' % (JSON_DIR, CAT, dset, MHREG, MAREG),  'w') as jf:
+        json.dump(jsonDM, jf, indent=2)
+    if not dset.endswith('rounded'):
+        continue
+    for key in h_rounded_sig[DM]['Pass'].keys():
+        jsonDM['PROCESSES']["data_obs"]['ALIAS'] = '%s_%s_%s_%s_%s_%s' % (CAT, dset, key, YEAR, MHREG, MAREG)
+        with open('%s/%s_Htoaato4b_%s_%s_%s_%s.json' % (JSON_DIR, CAT, dset, key, MHREG, MAREG), 'w') as jf:
+            json.dump(jsonDM, jf, indent=2)
 
-
-if doToysMC:
-    print('\nWriting '+str(NTOYS)+' MC toys to '+JSON_DIR+'/')
-    print('First remove files matching '+JSON_DIR+'/*mctoy*')
-    for fl in glob.glob(JSON_DIR+'/*mctoy*'):
+## Write JSONs for toys
+for DM in DMs:
+    if (DM == 'MC' and not doToysMC) or (DM == 'Data' and not doToysData):
+        continue
+    print('\nWriting '+str(NTOYS)+' '+DM+' toys to '+JSON_DIR+'/')
+    print('First remove files matching '+JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*')
+    for fl in glob.glob(JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*'):
         os.remove(fl)
     for iToy in range(NTOYS):
-        with open('jsons/%s_Htoaato4b_MC.json' % CATL, 'r') as jf:
-            jsonMC = json.load(jf)  # `data` is now a Python dictionary or list
-        jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_MCsmooth2_toy'+str(iToy)+'_'+YEAR
-        jsonMC['NAME'] = CAT+'_Htoaato4b'
-        with open(JSON_DIR+'/'+CAT+'_Htoaato4b_mctoy'+str(iToy)+'.json', 'w') as jf:
-            json.dump(jsonMC, jf, indent=2)
-        for key in h_MCrounded_sig_pass.keys():
-            jsonMC['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_MCsmooth2_toy'+str(iToy)+'_'+key+'_'+YEAR
-            with open(JSON_DIR+'/'+CAT+'_Htoaato4b_mctoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
-                json.dump(jsonMC, jf, indent=2)
+        with open('jsons/%s_Htoaato4b_%s.json' % (CATL, DM), 'r') as jf:
+            jsonDM = json.load(jf)  # `data` is now a Python dictionary or list
+        jsonDM['PROCESSES']["data_obs"]['ALIAS'] = '%s_%ssmooth2_toy%d_%s_%s_%s' % (CAT, DM, iToy, YEAR, MHREG, MAREG)
+        jsonDM['PROCESSES']["data_obs"]['LOC'] = 'path/toys/FILE:HIST'
+        jsonDM['NAME'] = CAT+'_Htoaato4b'
+        with open('%s/%s_Htoaato4b_%stoy%d_%s_%s.json' % (JSON_DIR, CAT, DM, iToy, MHREG, MAREG), 'w') as jf:
+            json.dump(jsonDM, jf, indent=2)
+        for key in h_rounded_sig[DM]['Pass'].keys():
+            jsonDM['PROCESSES']["data_obs"]['ALIAS'] = '%s_%ssmooth2_toy%d_%s_%s_%s_%s' % (CAT, DM, iToy, key, YEAR, MHREG, MAREG)
+            with open('%s/%s_Htoaato4b_%stoy%d_%s_%s_%s.json' % (JSON_DIR, CAT, DM, iToy, key, MHREG, MAREG), 'w') as jf:
+                json.dump(jsonDM, jf, indent=2)
+    ## End loop: for iToy in range(NTOYS)
+## End loop: for DM in DMs
 
-if doToysData:
-    print('\nWriting '+str(NTOYS)+' data toys to '+JSON_DIR+'/')
-    print('First remove files matching '+JSON_DIR+'/*datatoy*')
-    for fl in glob.glob(JSON_DIR+'/*datatoy*'):
-        os.remove(fl)
-    for jToy in range(NTOYS):
-        with open('jsons/%s_Htoaato4b_Data.json' % CATL, 'r') as jf:
-            jsonData = json.load(jf)  # `data` is now a Python dictionary or list
-        jsonData['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_Data_toy'+str(jToy)+'_'+YEAR
-        jsonData['NAME'] = CAT+'_Htoaato4b'
-        with open(JSON_DIR+'/'+CAT+'_Htoaato4b_datatoy'+str(jToy)+'.json', 'w') as jf:
-            json.dump(jsonData, jf, indent=2)
-        for key in h_MCrounded_sig_pass.keys():
-            jsonData['PROCESSES']["data_obs"]['ALIAS'] = CAT+'_Data_toy'+str(iToy)+'_'+key+'_'+YEAR
-            with open(JSON_DIR+'/'+CAT+'_Htoaato4b_datatoy'+str(iToy)+'_'+key+'.json', 'w') as jf:
-                json.dump(jsonData, jf, indent=2)
 
 print('\n\nALL DONE with Haa4b_makeMCtoy.py!!!\n\n')
