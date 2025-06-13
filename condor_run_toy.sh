@@ -2,6 +2,7 @@
 
 iToy=$1            ## Toy index
 TOYSOURCE=$2       ## Data or MC
+xCat=$3            ## Category to run
 MASSES=(12 20 35 50 60)  ## Needs to match hard-coded settings in htoaato4b_mctoy.py
 NTOYGOF=100        ## Number of toys 2DAlphabet will run for goodness-of-fit test
 YEAR="2018"
@@ -50,9 +51,7 @@ START_TIME=$SECONDS
 
 
 ## WARNING!!! You have to run *all* the "sub-categories" before running the "Comb" categories
-#for iCat in LepLo LepHi LepComb LepIncl gg0lLo gg0lHi gg0lComb gg0lIncl VBFjjLo VBFjjHi VBFjjComb VBFjjIncl VjjLo VjjHi VjjComb VjjIncl tt0l HadWP40Comb HadWP60Comb LepHadComb; do
-#for iCat in LepLoA LepHiA LepCombA LepLoB LepHiB LepCombB LepLoC LepHiC LepCombC LepLoD LepHiD LepCombD LepLoE LepHiE LepCombE LepLoF LepHiF LepCombF LepLoG LepHiG LepCombG LepLoH LepHiH LepCombH; do
-for iCat in gg0lHi; do
+for iCat in $xCat; do
 
     ## Define WP for each category type
     WP="UNDEF"
