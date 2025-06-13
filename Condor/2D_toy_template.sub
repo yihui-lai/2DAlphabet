@@ -1,0 +1,82 @@
+## From https://github.com/bouchamaouihichem/2DAlphabet/blob/2DToys_0518/Condor/2D_toys.sub
+
+########################### Condor submit file ###########################
+
+### Documentation:
+# * https://batchdocs.web.cern.ch/local/index.html
+# * https://htcondor.readthedocs.io/en/latest/users-manual/submitting-a-job.html
+# * https://gitlab.cern.ch/skkwan/lunaFramework/-/blob/main/condorSkim/jobTemplate.sub?ref_type=heads
+
+### include .sh file of what condor is supposed to do
+executable = 2D_toy_template.sh 
+
+### arguments that you want to keep track of:
+# ClusterId is unique to each submission, whil ProcId is incremental depending on the number of jobs submitted for given condor submission.
+# For example: "$queue 150" will run a job 150 times. All the jobs will have the same ClusterID, but each job will have an incremental ProcId.
+arguments = $(SUBMIT_TIME)$(Proxy_path)$(ClusterId)$(ProcId) 
+
+### This sets the maximum runtime of a job (elapsed time while job is running, not queued)
+# 20 minutes, default
+# +JobFlavour = "espresso"
+# 1 hour
+# +JobFlavour = "microcentury"
+# 2 hours
++JobFlavour = "longlunch"
+# 8 hours
+# +JobFlavour = "workday"
+# +JobFlavour = "tomorrow" # 1 day
+# +JobFlavour = "testmatch" # 3 days
+# +JobFlavour = "nextweek" # 1 week
+
+### Explicitly selecting OS: AlmaLinux9 is the default in lxplus but can ask for CentOS7 
+# use this command to see the list of OS: $ condor_status -compact -af OpSysAndVer | sort | uniq -c
+#requirements = (OpSysAndVer =?= "AlmaLinux9")
+#requirements = (OpSysAndVer =?= "CentOS7")
+
+# Use singularity image environment, does not work with 2D Alphabet from my tests
+#MY.SingularityImage = "/cvmfs/unpacked.cern.ch/gitlab-registry.cern.ch/cms-cat/cmssw-lxplus/cmssw-el7-lxplus:latest/"
+
+# Allows to make new directort if needed
+MY.XRDCP_CREATE_DIR     = True
+
+### Copeis local environment, including CMSSW, but in theory 2D Alphabet as well
+#getenv = True
+
+### These files are located in your condor output directory. You could include arguments in the name if you want. For example:
+###output = Condor_output/test.$(ClusterId).$(ProcId).out
+###error = Condor_output/test.$(ClusterId).$(ProcId).err
+###log = Condor_output/test.$(ClusterId).log # Since the log file is submission specific, you cannot include ProcId
+# stdout of your .sh command, i.e: your script printouts
+output  = out/condor.$(ClusterId).out 
+# stderr of your .sh command, i.e: warning and errors from your script
+error = err/condor.$(ClusterId).err
+# log of your jobs submission, i.e: status and information about your job 
+log = log/condor.$(ClusterId).log 
+
+### Although you can't run condor from eos (afs only) you can transfer output files to eos by specifying output_destination
+#output_destination = root://eosuser.cern.ch//eos/user/b/bejones/condor/xfer/
+# You can even create the directory as needed for each job 
+#output_destination = root://eosuser.cern.ch//eos/user/b/bejones/condor/xfer/$(ClusterId)/
+#MY.XRDCP_CREATE_DIR = True
+# You can also import input files from eos first
+#transfer_input_files = root://eosuser.cern.ch//eos/user/b/bejones/condor/file.txt
+# transfer proxy with job
+##transfer_input_files   = $(Proxy_path) 
+
+### This option guarantees you always get stdout/stderr for jobs even if they fail abnormally
+should_transfer_files   = YES
+when_to_transfer_output = ON_EXIT
+#transfer_output_files   = "" # to suppresse output file transfer
+
+### This option should see these files updated more or less as the job writes them, but it has an impact on the scheduling for large jobs
+stream_output = True
+stream_error = True
+
+### Default cpus is 1 CPU, 2GB memory and 20GB disk. This is scaled as you request more CPU (e.g: requesting 4 CPUs will automatically result in 8GB memory and 20GB disk
+#request_cpus   = 8
+### memory is a soft limit: job will be terminated if there is memory pressure on the node
+###request_memory = 8GB 
+###request_disk   = 2M
+
+queue
+
