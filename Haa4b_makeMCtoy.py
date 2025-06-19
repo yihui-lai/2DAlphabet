@@ -442,8 +442,7 @@ elif CAT.startswith('Lep'):
             samps.append(sig+'toaato4b_mA_'+str(mA))
 
 else:
-    print('\nInvalid category %s!!! Quitting.' % CAT)
-    sys.exit()
+    assert False, '\nInvalid category %s!!! Quitting.' % CAT
 
 print('\nIn Haa4b_makeMCtoy.py, looking for the following samples:')
 print(samps)
@@ -486,7 +485,7 @@ for samp in samps:
                     for sig in sigs:
                         h_sig[mA][PF].SetName(h_sig[mA][PF].GetName().replace(sig+'toaa','Htoaa'))
                     if VERBOSE: print('  * Creating %s from %s (integral = %.1f)' % (h_sig[mA][PF].GetName(), hname[PF], h_sig[mA][PF].Integral()))
-                elif not 'SumH':
+                elif not 'SumH' in hname[PF]:
                     h_sig[mA][PF].Add(in_file.Get(hname[PF]))
                     if VERBOSE: print('  * Adding %s to %s (new integral = %.1f)' % (hname[PF], h_sig[mA][PF].GetName(), h_sig[mA][PF].Integral()))
             ## End loop: for PF in PFs
@@ -647,7 +646,6 @@ for DM in DMs:
         ROOT_cmd = 'RECREATE' if PF == 'Pass' else 'UPDATE'
         avg_toy[DM][PF] = toys_generator(h_smooth2[DM][PF], NTOYS, PLOT_DIR+'/toys', ROOT_cmd, h_sig, PF)
 ## End loop: for DM in DMs
-
 
 ## Write h_orig and average toy histograms to ROOT file
 out_file_dataMC = R.TFile('%s/%s_%s_%dtoys_Data_MC.root' % (PLOT_DIR, CAT, TOYSOURCE, NTOYS), 'UPDATE')
