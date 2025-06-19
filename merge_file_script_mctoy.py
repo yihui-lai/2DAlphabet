@@ -23,6 +23,8 @@ MHREGS   = ['mass', 'msoft', 'pnet']
 MAREGS   = ['34a', '34d', '4a']
 WP_CUTS  = ['WP60']  ## Default for most categories
 DATE     = '2025_06_03'
+eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
+EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
 
 CATS_IN = {}
 CAT_OUT = sys.argv[1]  ## gg0lIncl, LepHi, LepLo, etc.
@@ -107,7 +109,7 @@ OUT_DIR = IN_DIR+'2D_in_merged_'+CAT_OUT+'/'
 ## For use as input to htoaato4b_mctoy.py
 OUT_DIRS = {}
 for cat in [CAT_OUT]+CAT_INS:
-    OUT_DIRS[cat] = 'plots/'+YEAR+'/'+DATE+'/'+cat+'/'
+    OUT_DIRS[cat] = EOS_DIR+'/plots/'+YEAR+'/'+DATE+'/'+cat+'/'
 
 
 def main():
