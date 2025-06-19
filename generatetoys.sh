@@ -10,7 +10,7 @@ source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
 OUTDIR="${EOS_DIR}/raw_inputs/${YEAR}/${DATE}"
 
 # Adjust number of toys
-NTOYS=100 # Minimum of 2. 2500 takes about 15 minutes per category (bkg-only + 11 signal injections)
+NTOYS=100 # Minimum of 2. 100 takes about 15 minutes per category (bkg-only + signal injections)
 
 # Do you want to generate toys from MC or Data or both?
 #TOYSOURCE='MC'

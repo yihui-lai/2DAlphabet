@@ -331,7 +331,7 @@ def toys_generator(hist, nToy, output_dir, root_cmd, h_sigs={}, PF=None):
             out_file_sig[key] = R.TFile(output_file.GetName().replace('toy%d' % iT, 'toy%d_%s' % (iT, key)), root_cmd)
         if iT == 0:
             print('Writing %s toy #%d to %s' % (PF, iT, output_dir+"/"+filename+".root"))
-        if (iT % 100) == 0:
+        if (iT % int(np.sqrt(nToy))) == 0:
             print('  - Starting toy %d/%d' % (iT, nToy))
         toy_hist = hist.Clone(hist.GetName().replace(str_repl, str_repl+'toy%d_' % iT))
         toy_hist_sig = {}
@@ -448,7 +448,7 @@ else:
 print('\nIn Haa4b_makeMCtoy.py, looking for the following samples:')
 print(samps)
 
-base_pth_in = 'raw_inputs/%s/%s/2D_in_merged_%s/' % (YEAR, DATE, superCat)
+base_pth_in = '%s/raw_inputs/%s/%s/2D_in_merged_%s/' % (EOS_DIR, YEAR, DATE, superCat)
 
 # step 1, merge bkg MC, set bin errors based on effective yields
 h_orig,h_sig = {},{}
