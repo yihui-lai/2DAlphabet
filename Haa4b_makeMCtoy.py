@@ -28,7 +28,9 @@ for mA in MASSESA:  ## Signal to inject, in 1/1000ths
     else:               SIGINJ[mA] = [100] ## [10, 20, 50, 100, 200]
 YEAR = '2018'
 DATE = '2025_06_03'
-PLOT_DIR = 'plots/'+YEAR+'/'+DATE+'/'+CAT
+eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
+EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
+PLOT_DIR = EOS_DIR+'/plots/'+YEAR+'/'+DATE+'/'+CAT
 JSON_DIR = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT
 DMs = ['Data','MC']
 PFs = ['Pass','Fail']
@@ -48,6 +50,8 @@ if not os.path.exists(PLOT_DIR+'/toys'):
     os.mkdir(PLOT_DIR+'/toys')
 if not os.path.exists(JSON_DIR):
     os.system('mkdir -p '+JSON_DIR)
+if not os.path.exists(EOS_DIR+'/'+JSON_DIR):
+    os.system('mkdir -p '+EOS_DIR+'/'+JSON_DIR)
 
 ###################
 ## Helper functions
@@ -418,7 +422,7 @@ if CAT.startswith('gg0l') or CAT.startswith('VBFjj'):
 samps = ['Data']
 sigs = None
 if CAT.startswith('gg0l') or CAT.startswith('VBFjj') or CAT.startswith('Vjj') or CAT.startswith('tt0l'):
-    samps.append('MC')  ## Background MC already summed
+    samps.append('SumMC' if CAT.startswith('VBFjj') else 'MC')  ## Background MC already summed
     sigs = ['ggH','VBFH','WH','ZH','ttH','SumH']
     for sig in sigs:
         for mA in MASSESA:
@@ -603,7 +607,7 @@ for DM in DMs:
             for sInj in SIGINJ[mA]:
                 key = 'mA_%s_sigBr_%03d' % (mA, sInj)
                 h_rounded_sig[DM][PF][key] = h_smooth2[DM][PF].Clone(h_smooth2[DM][PF].GetName().replace('smooth2','rounded_'+key))
-                h_rounded_sig[DM][PF][key].Add(h_sig[mA][PF], sInj*0.01)
+                h_rounded_sig[DM][PF][key].Add(h_sig[mA][PF], sInj*0.001)
                 h_rounded_sig[DM][PF][key] = round_bins(h_rounded_sig[DM][PF][key].Clone(key+'_'+PF+'_tmp'), h_rounded_sig[DM][PF][key])
             ## End loop: for sInj in SIGINJ[mA]
         ## End loop: for mA in h_sig.keys()
@@ -709,9 +713,9 @@ for dset in ['Data','Datarounded','MCrounded']:
 for DM in DMs:
     if (DM == 'MC' and not doToysMC) or (DM == 'Data' and not doToysData):
         continue
-    print('\nWriting '+str(NTOYS)+' '+DM+' toys to '+JSON_DIR+'/')
-    print('First remove files matching '+JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*')
-    for fl in glob.glob(JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*'):
+    print('\nWriting '+str(NTOYS)+' '+DM+' toys to '+EOS_DIR+'/'+JSON_DIR+'/')
+    print('First remove files matching '+EOS_DIR+'/'+JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*')
+    for fl in glob.glob(EOS_DIR+'/'+JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*'):
         os.remove(fl)
     for iToy in range(NTOYS):
         with open('jsons/%s_Htoaato4b_%s.json' % (CATL, DM), 'r') as jf:
@@ -719,11 +723,11 @@ for DM in DMs:
         jsonDM['PROCESSES']["data_obs"]['ALIAS'] = '%s_%ssmooth2_toy%d_%s_%s_%s' % (CAT, DM, iToy, YEAR, MHREG, MAREG)
         jsonDM['PROCESSES']["data_obs"]['LOC'] = 'path/toys/FILE:HIST'
         jsonDM['NAME'] = CAT+'_Htoaato4b'
-        with open('%s/%s_Htoaato4b_%stoy%d_%s_%s.json' % (JSON_DIR, CAT, DM, iToy, MHREG, MAREG), 'w') as jf:
+        with open('%s/%s/%s_Htoaato4b_%stoy%d_%s_%s.json' % (EOS_DIR, JSON_DIR, CAT, DM, iToy, MHREG, MAREG), 'w') as jf:
             json.dump(jsonDM, jf, indent=2)
         for key in h_rounded_sig[DM]['Pass'].keys():
             jsonDM['PROCESSES']["data_obs"]['ALIAS'] = '%s_%ssmooth2_toy%d_%s_%s_%s_%s' % (CAT, DM, iToy, key, YEAR, MHREG, MAREG)
-            with open('%s/%s_Htoaato4b_%stoy%d_%s_%s_%s.json' % (JSON_DIR, CAT, DM, iToy, key, MHREG, MAREG), 'w') as jf:
+            with open('%s/%s/%s_Htoaato4b_%stoy%d_%s_%s_%s.json' % (EOS_DIR, JSON_DIR, CAT, DM, iToy, key, MHREG, MAREG), 'w') as jf:
                 json.dump(jsonDM, jf, indent=2)
     ## End loop: for iToy in range(NTOYS)
 ## End loop: for DM in DMs
