@@ -6,7 +6,8 @@
 
 YEAR="2018"
 DATE="2025_06_03"
-OUTDIR="raw_inputs/${YEAR}/${DATE}"
+source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
+OUTDIR="${EOS_DIR}/raw_inputs/${YEAR}/${DATE}"
 
 # Adjust number of toys
 NTOYS=100 # Minimum of 2. 2500 takes about 15 minutes per category (bkg-only + 11 signal injections)
@@ -24,7 +25,7 @@ TOYSOURCE='DataAndMC'
 START_TIME=$SECONDS
 
 # Categories for which to generate toys
-declare -a CATS=('LepLo' 'LepHi' 'LepIncl' 'gg0lLo' 'gg0lHi' 'ggIncl' 'VjjLo' 'VjjHi' 'VjjIncl' 'tt0l')
+declare -a CATS=('LepHi' 'LepLo' 'LepIncl' 'gg0lHi' 'gg0lLo' 'gg0lIncl' 'VBFjjHi' 'VBFjjLo' 'VBFjjIncl' 'VjjHi' 'VjjLo' 'VjjIncl' 'tt0l')
 #declare -a CATS=('LepHiA' 'LepHiB' 'LepHiC' 'LepHiD' 'LepHiE' 'LepHiF' 'LepHiG' 'LepHiH' 'LepLoA' 'LepLoB' 'LepLoC' 'LepLoD' 'LepLoE' 'LepLoF' 'LepLoG' 'LepLoH')
 
 ## Generate toys for each category
