@@ -6,7 +6,8 @@
 
 YEAR="2018"
 DATE="2025_06_03"
-OUTDIR="raw_inputs/${YEAR}/${DATE}"
+source config/user.config  ## Loads USER, LOC_DIR, and EOS_DIR
+OUTDIR="${EOS_DIR}/raw_inputs/${YEAR}/${DATE}"
 
 # Do you want to re-copy input ROOT files to local area?
 FETCH_INPUTS=true # true or false; takes ~3 minutes
