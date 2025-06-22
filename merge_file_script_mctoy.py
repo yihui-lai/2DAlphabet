@@ -30,7 +30,7 @@ EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
 CATS_IN = {}
 CAT_OUT = sys.argv[1]  ## gg0lIncl, LepHi, LepLo, etc.
 CAT_INS = [CAT_OUT]
-IN_DIR = 'raw_inputs/%s/%s/' % (YEAR, DATE)
+IN_DIR = EOS_DIR+'/raw_inputs/%s/%s/' % (YEAR, DATE)
 
 IS_HAD,IS_LEP = False,False
 for pref in ['gg0l','VBFjj','Vjj','tt0l']:
@@ -97,7 +97,7 @@ elif IS_LEP:
         elif cat.startswith('Wlv') or (cat.startswith('tt') and cat.endswith('lv')):
             CATS_IN[cat]['bkgs'] = ['Zll','ZZ','Wlv','TT1l','TT2l','ST_s_1l','STop_t','STbar_t','STop_tW_12l','STbar_tW_12l','MC']
         elif cat.startswith('Zvv'):
-            CATS_IN[cat]['bkgs'] = ['QCD_BGen','QCD_bEnr','QCD_Incl','Wqq','Zqq','TT0l','TT1l','Zll','Wlv','ST_s_1l','STop_t','STbar_t','STop_tW_12l','STbar_tW_12l','WW','WZ','ZZ','MC']
+            CATS_IN[cat]['bkgs'] = ['Wqq','Zqq','TT0l','TT1l','Zvv','Zll','Wlv','ST_s_1l','STop_t','STbar_t','STop_tW_12l','STbar_tW_12l','WW','WZ','ZZ','MC']
         else:
             assert False, 'Category %s not a valid leptonic category!!! Quitting.' % cat
 ## End conditional: elif IS_LEP
