@@ -15,6 +15,7 @@ R.gStyle.SetOptStat(0)  ## Don't display stat boxes
 
 ## User configuration
 VERBOSE  = False
+PRINTONLY = False
 YEAR     = '2018'
 HADSIGS  = ['ggH', 'VBFH', 'WH', 'ZH', 'ttH']
 LEPSIGS  = ['WH', 'ZH', 'ttH']
@@ -121,16 +122,21 @@ def main():
     print('See https://root-forum.cern.ch/t/error-in-tlist-clear-a-list-is-accessing-an-object-already-deleted-list-name-tlist-when-opening-a-file-created-by-root-6-30-using-root-6-14-09/57588/1')
     
 
-    print('\nDeleting any existing output directories, and creating empty ones:')
-    for o_dir in [OUT_DIR]+[OUT_DIRS[cat] for cat in [CAT_OUT]+CAT_INS]:
-        print(o_dir)
-        if os.path.exists(o_dir):
-            shutil.rmtree(o_dir)
-        os.makedirs(o_dir)
+    if not PRINTONLY:
+        print('\nDeleting any existing output directories, and creating empty ones:')
+        for o_dir in [OUT_DIR]+[OUT_DIRS[cat] for cat in [CAT_OUT]+CAT_INS]:
+            print(o_dir)
+            if os.path.exists(o_dir):
+                shutil.rmtree(o_dir)
+            os.makedirs(o_dir)
 
     h_outs = {}  ## Save summed output histograms
     h_ins  = {}  ## Also save the inputs (keeps naming scheme consistent)
     for cat in CAT_INS:
+        if PRINTONLY: print('\n\n******* Category %s *******\n' % cat)
+        ## Save quantities for S/B and S/sqrt(B) estimates
+        data_pass,data_fail,data_fail_win,sig_pass,sig_pass_win = 0,0,0,0,0
+
         samps = ['Data']
         if cat.startswith('VBFjj') and YEAR == '2018':
             samps = ['JetHT_Run2018%s' % era for era in ['A','B','C','D']]
@@ -155,11 +161,14 @@ def main():
                 in_file = None
                 ## SumHtoaato4b and SumMC are constructed on the fly
                 if not samp.startswith('Sum'):
-                    if VERBOSE or samp == 'Data': print('\n*******\nReading from %s' % in_file_str)
+                    if VERBOSE or (samp == 'Data' and not PRINTONLY):
+                        print('\n*******\nReading from %s' % in_file_str)
                     in_file = R.TFile(in_file_str, 'open')
 
                 for mHr in MHREGS:
+                    if PRINTONLY and mHr != 'pnet': continue
                     for mAr in MAREGS:
+                        if PRINTONLY and mAr != '34a': continue
                         for pf in ['Pass', 'Fail']:
                             h_in_name_read  = '%s_%s_%s_%s_%s_%s_%s_Nom' % (cat, samp, YEAR, mHr, mAr, wp, pf)
                             h_in_name_write = h_in_name_read
@@ -233,11 +242,36 @@ def main():
                                     h_outs[h_out_name].Add(h_in)
                                     if VERBOSE: print('  * Integral = %.1f' % h_outs[h_out_name].Integral())
 
+                            nXi = h_in.GetNbinsX()
+                            nYi = h_in.GetNbinsY()
+                            iXw = [ii+1 for ii in range(nXi) if h_in.GetXaxis().GetBinLowEdge(ii+1) == 110][0]
+                            jXw = [ii for ii in range(nXi) if h_in.GetXaxis().GetBinLowEdge(ii+1) == 140][0]
+                            if (wp == 'WP40') or (not 'WP40' in WP_CUTS):
+                                if samp == 'Data':
+                                    print('Adding to data: %s (%s)' % (samp, h_in_name_read))
+                                    if pf == 'Pass':
+                                        data_pass += h_in.Integral()
+                                    if pf == 'Fail':
+                                        data_fail += h_in.Integral()
+                                        data_fail_win += h_in.Integral(iXw, jXw, 1, nYi)
+                                if 'Htoaato4b' in samp and '_mA_30' in samp and not 'SumH' in samp:
+                                    if pf == 'Pass':
+                                        print('Adding to sig: %s (%s)' % (samp, h_in_name_read))
+                                        sig_pass += h_in.Integral()
+                                        sig_pass_win += h_in.Integral(iXw, jXw, 1, nYi)
+                            ## End conditional: if (wp == 'WP40') or (not 'WP40' in WP_CUTS)
+
+                            if PRINTONLY and not 'Htoaato4b' in samp and (samp == 'Data' or wp == 'WP60'):
+                                print('%s %s %s integral = %.2f' % (wp, pf, samp, h_in.Integral()))
+                                if h_in.GetMaximum() > 0.10*h_in.Integral() or samp == 'MC' or samp == 'SumMC':
+                                    print('  - Max = %.2f (%.1f%%)' % (h_in.GetMaximum(), 100*h_in.GetMaximum()/h_in.Integral()))
                         ## End loop: for pf in ['Pass', 'Fail']
                     ## End loop: for mAr in MAREGS
                 ## End loop: for mHr in MHREGS
                 if not samp.startswith('Sum'):
                     in_file.Close()
+
+                if PRINTONLY: continue
 
                 ## Common output ROOT file with all histograms (input to Haa4b_makeMCtoy.py)
                 out_file_str = OUT_DIR+('%s_%s_%s.root' % (CAT_OUT, samp, YEAR))
@@ -291,7 +325,17 @@ def main():
                     out_file3.Close()
             ## End loop: for wp in WP_CUTS
         ## End loop: for samp in samps
+
+        if data_pass == 0:
+            print('Very weird!!! %s data_pass = 0! Setting to 1.' % cat)
+            data_pass = 1.0
+        data_pass_win = data_fail_win*(data_pass/data_fail)
+        print('\n%s Data pass/fail = %d/%d (%.1f%%), est. %.1f in Higgs window (%.1f%%)' % (cat, data_pass, data_fail, 100*data_pass/data_fail, data_pass_win, 100*data_pass_win/data_pass))
+        print('30 GeV Signal pass = %.1f, %.1f in window (%.1f%%)' % (sig_pass, sig_pass_win, 100*sig_pass_win/sig_pass))
+        print('S/B = %.2f, S/sqrt(B) = %.2f\n' % (sig_pass_win/data_pass_win, sig_pass_win/math.sqrt(data_pass_win)))
+
     ## End loop: for cat in CAT_INS
+
     print('\n\nAll done!')
     
 ## End function: def main()
