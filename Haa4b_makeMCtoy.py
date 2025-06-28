@@ -13,11 +13,13 @@ R.gROOT.SetBatch(True)
 VERBOSE  = False
 VVERBOSE = False
 VVVERBOSE = False
+DELETE_OLD = True  ## Remove old files
+TEST = False  ## Append '_test' to outputs
 CAT = str(sys.argv[1])  ## gg0lIncl/Hi/Lo, VBFjjIncl/Hi/Lo, LepHi/Lo
 CATL = CAT  ## Modified category name
 NTOYS    = int(sys.argv[2])
 TOYSOURCE = str(sys.argv[3]) ## MC, Data, DataAndMC, None
-SMOOTH_CUT = 2.5  ## Largest allowed fluctation in smoothed background (in standard deviations)
+SMOOTH_CUT = 2.0  ## Largest allowed fluctation in smoothed background (in standard deviations)
 MHREG   = 'pnet'
 MAREG   = '34a'
 MASSESA = ['12']+[str(mA*5) for mA in range(3,13)]
@@ -30,8 +32,9 @@ YEAR = '2018'
 DATE = '2025_06_03'
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
-PLOT_DIR = EOS_DIR+'/plots/'+YEAR+'/'+DATE+'/'+CAT
-JSON_DIR = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT
+PLOT_DIR_IN = EOS_DIR+'/plots/'+YEAR+'/'+DATE+'/'+CAT
+PLOT_DIR = PLOT_DIR_IN+('_test' if TEST else '')
+JSON_DIR = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT+('_test' if TEST else '')
 DMs = ['Data','MC']
 PFs = ['Pass','Fail']
 
@@ -42,12 +45,12 @@ if not (doToysMC or doToysData or TOYSOURCE == 'None'):
     print('\n\nHaa4b_makeMCtoy.py bad option! TOYSOURCE = %s. Quitting.\n')
     sys.exit()
 ## Check for output directory
-if not os.path.exists(PLOT_DIR):
-    print('\n\nHaa4b_makeMCtoy.py error! '+PLOT_DIR+' does not exist. Run merge_file_script_mctoy.py first.\n')
+if not os.path.exists(PLOT_DIR_IN):
+    print('\n\nHaa4b_makeMCtoy.py error! '+PLOT_DIR_IN+' does not exist. Run merge_file_script_mctoy.py first.\n')
     sys.exit()
 ## Make sub-directories for output toy ROOT and JSON files
 if not os.path.exists(PLOT_DIR+'/toys'):
-    os.mkdir(PLOT_DIR+'/toys')
+    os.system('mkdir -p '+PLOT_DIR+'/toys')
 if not os.path.exists(JSON_DIR):
     os.system('mkdir -p '+JSON_DIR)
 if not os.path.exists(EOS_DIR+'/'+JSON_DIR):
@@ -264,8 +267,8 @@ def compute_max_pull(hist, dBin, eff_wgt=None):
                 mAvg = avg
                 mArea = (iXhi-iXlo+1)*(iYhi-iYlo+1)
 
-    if VERBOSE: print('\ncompute_max_pull: %s bin %d,%d has yield %.3f vs. %.3f avg from %d nearby bins (pull = %.1f)' %
-                      (hist.GetName(), mX, mY, hist.GetBinContent(mX,mY), mAvg, mArea, max_pull))
+    print('\ncompute_max_pull: %s bin %d,%d has yield %.3f vs. %.3f avg from %d nearby bins (pull = %.1f)' %
+          (hist.GetName(), mX, mY, hist.GetBinContent(mX,mY), mAvg, mArea, max_pull))
     if VVERBOSE:
         for iiX in range(max(1,mX-dBin), min(nX,mX+dBin)+1):
             for iiY in range(max(1,mY-dBin), min(nY,mY+dBin)+1):
@@ -411,18 +414,21 @@ print("Running Haa4b_makeMCtoy.py for the following category:", CAT)
 ## "Super-category" defines hadronic directory / file names
 superCat = CAT
 for supr in ['gg0l','VBFjj','Vjj']:
-    if CAT.startswith(supr):
+    if CAT.startswith(supr) and CAT != 'gg0lV':
         superCat = supr+'Incl'
 ## Most categories used WP60; only gg0l and VBFjj use WP40
 WP = 'WP60'
 if CAT.startswith('gg0l') or CAT.startswith('VBFjj'):
     WP = 'WP40'
+if CAT == 'VVBFjj':
+    WP = 'WP4060'
 
 ## Different categories use different sets of background samples
 samps = ['Data']
 sigs = None
-if CAT.startswith('gg0l') or CAT.startswith('VBFjj') or CAT.startswith('Vjj') or CAT.startswith('tt0l'):
-    samps.append('SumMC' if CAT.startswith('VBFjj') else 'MC')  ## Background MC already summed
+if CAT.startswith('Had') or CAT.startswith('gg0l') or ('VBFjj' in CAT) or CAT.startswith('Vjj') or CAT.startswith('tt0l'):
+    ## Background MC already summed ('MC') for all categories except VBFjj, which has manual summing ('SumMC')
+    samps.append('SumMC' if (('VBFjj' in CAT) or (CAT == 'gg0lV')) else 'MC')
     sigs = ['ggH','VBFH','WH','ZH','ttH','SumH']
     for sig in sigs:
         for mA in MASSESA:
@@ -435,7 +441,8 @@ elif CAT.startswith('Lep'):
         CATL = CAT
     else:
         assert False, '\nInvalid CAT = %s!!! Quitting.' % CAT
-    samps.append('MC')  ## Background MC already summed
+    ## Use manual summing ('SumMC') instead of original sum ('MC') in order to drop QCD from Zvv background model
+    samps.append('SumMC')
     sigs = ['WH','ZH','ttH','SumH']
     for sig in sigs:
         for mA in MASSESA:
@@ -500,10 +507,10 @@ for samp in samps:
     h_in = {}
     for PF in PFs: h_in[PF] = in_file.Get(hname[PF])
 
-    ## For WP40 samples (gg0l and VBFjj), scale background MC WP60 --> WP40
-    if WP == 'WP40' and samp != 'Data' and not 'Htoaato4b' in samp:
+    ## For WP40 samples (gg0l and VBFjj and VVBFjj), scale background MC WP60 --> WP40
+    if (WP == 'WP40' or WP == 'WP4060') and samp != 'Data' and not 'Htoaato4b' in samp:
         for PF in PFs:
-            h_in_WP60  = in_file.Get(hname[PF].replace('WP40','WP60'))
+            h_in_WP60  = in_file.Get(hname[PF].replace(WP,'WP60'))
             WP40_yield = h_in[PF].Integral()
             h_in[PF].Scale(0)
             h_in[PF].Add(h_in_WP60)
@@ -512,7 +519,7 @@ for samp in samps:
             h_in[PF].Scale(SF)
             del h_in_WP60
         ## End loop: for PF in PFs
-    ## End conditional: if WP == 'WP40' and samp != 'Data' and not 'Htoaato4b' in samp
+    ## End conditional: if (WP == 'WP40' or WP == 'WP4060') and samp != 'Data' and not 'Htoaato4b' in samp
 
     ## Get the input histograms, sum background MC
     for PF in PFs:
@@ -561,10 +568,10 @@ for DM in DMs:
             assert False, "\n\nERROR!!! h_orig[%s][%s] does not exist! Quitting.\n" % (DM, PF)
         h_smooth1[DM][PF] = None
         h_smooth1[DM][PF] = h_orig[DM][PF].Clone(h_orig[DM][PF].GetName().replace('_%s_' % DM,'_%ssmooth1_' % DM))
-        ## Smooth until there are no large statistical variations in 3x3 or 5x5 regions (up to 2 times)
+        ## Smooth until there are no large statistical variations in 3x3 or 5x5 regions (up to 3 times)
         nSmooth = 0
         while((compute_max_pull(h_smooth1[DM][PF], 1, eff_wgt[DM][PF]) > SMOOTH_CUT or
-               compute_max_pull(h_smooth1[DM][PF], 2, eff_wgt[DM][PF]) > SMOOTH_CUT) and nSmooth < 2):
+               compute_max_pull(h_smooth1[DM][PF], 2, eff_wgt[DM][PF]) > SMOOTH_CUT) and nSmooth < 3):
             h_smooth1[DM][PF].Smooth(1)
             h_smooth1[DM][PF] = reset_bin_errors(h_smooth1[DM][PF], h_orig[DM][PF], eff_wgt[DM][PF])
             nSmooth += 1
@@ -639,9 +646,10 @@ for DM in DMs:
 for DM in DMs:
     if (DM == 'MC' and not doToysMC) or (DM == 'Data' and not doToysData):
         continue
-    print('\nRemoving all files matching '+PLOT_DIR+'/toys/*'+DM+'smooth2_toy*'+MHREG+'_'+MAREG+'*')
-    for fl in glob.glob(PLOT_DIR+'/toys/*'+DM+'smooth2_toy*'+MHREG+'_'+MAREG+'*'):
-        os.remove(fl)
+    if DELETE_OLD:
+        print('\nRemoving all files matching '+PLOT_DIR+'/toys/*'+DM+'smooth2_toy*'+MHREG+'_'+MAREG+'*')
+        for fl in glob.glob(PLOT_DIR+'/toys/*'+DM+'smooth2_toy*'+MHREG+'_'+MAREG+'*'):
+            os.remove(fl)
     for PF in PFs:
         ROOT_cmd = 'RECREATE' if PF == 'Pass' else 'UPDATE'
         avg_toy[DM][PF] = toys_generator(h_smooth2[DM][PF], NTOYS, PLOT_DIR+'/toys', ROOT_cmd, h_sig, PF)
@@ -712,9 +720,10 @@ for DM in DMs:
     if (DM == 'MC' and not doToysMC) or (DM == 'Data' and not doToysData):
         continue
     print('\nWriting '+str(NTOYS)+' '+DM+' toys to '+EOS_DIR+'/'+JSON_DIR+'/')
-    print('First remove files matching '+EOS_DIR+'/'+JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*')
-    for fl in glob.glob(EOS_DIR+'/'+JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*'):
-        os.remove(fl)
+    if DELETE_OLD:
+        print('First remove files matching '+EOS_DIR+'/'+JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*')
+        for fl in glob.glob(EOS_DIR+'/'+JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*'):
+            os.remove(fl)
     for iToy in range(NTOYS):
         with open('jsons/%s_Htoaato4b_%s.json' % (CATL, DM), 'r') as jf:
             jsonDM = json.load(jf)  # `data` is now a Python dictionary or list
