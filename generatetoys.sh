@@ -25,8 +25,12 @@ TOYSOURCE='DataAndMC'
 START_TIME=$SECONDS
 
 # Categories for which to generate toys
-declare -a CATS=('LepHi' 'LepLo' 'LepIncl' 'gg0lHi' 'gg0lLo' 'gg0lIncl' 'VBFjjHi' 'VBFjjLo' 'VBFjjIncl' 'VjjHi' 'VjjLo' 'VjjIncl' 'tt0l')
-#declare -a CATS=('LepHiA' 'LepHiB' 'LepHiC' 'LepHiD' 'LepHiE' 'LepHiF' 'LepHiG' 'LepHiH' 'LepLoA' 'LepLoB' 'LepLoC' 'LepLoD' 'LepLoE' 'LepLoF' 'LepLoG' 'LepLoH')
+## Five essential "fit categories", run with more toys (>= 100)
+declare -a CATS=('LepLo' 'LepHiT' 'gg0lV' 'VVBFjj' 'HadXLo')
+# ## "Basic" categories to compare with 5 above, can run with fewer toys (<= 20)
+# declare -a CATS=('LepHi' 'LepIncl' 'gg0lHi' 'gg0lLo' 'gg0lIncl' 'VBFjjHi' 'VBFjjLo' 'VBFjjIncl' 'VjjHi' 'VjjLo' 'VjjIncl' 'tt0l0b' 'tt0lIncl')
+# ## Alternate lepton categories for sensitivity optimization, can run with fewer toys (<= 20)
+# declare -a CATS=('LepHiA' 'LepHiB' 'LepHiC' 'LepHiD' 'LepHiE' 'LepHiF' 'LepHiG' 'LepHiH' 'LepLoA' 'LepLoB' 'LepLoC' 'LepLoD' 'LepLoE' 'LepLoF' 'LepLoG' 'LepLoH')
 
 ## Generate toys for each category
 for CAT in "${CATS[@]}"; do
