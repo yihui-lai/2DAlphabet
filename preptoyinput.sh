@@ -41,6 +41,8 @@ if $FETCH_INPUTS; then
     echo "Starting VBF ..."
     mkdir ${OUTDIR}/VBFjj
     cp /afs/cern.ch/user/m/moanwar/public/2DAlphabet_2018_4June/analyze_htoaa_stage1.root ${OUTDIR}/VBFjj/
+    # -- tt0l (tighter top tagger, separated by AK4 b-tags) --
+    cp -r /eos/cms/store/user/ssawant/htoaa/analysis/20250626_tt0lDatacardsFullSyst/2018/2DAlphabet_inputFiles/* ${OUTDIR}/
     # -- Leptonic categories from Hichem (Zll, Wlv, ttlv, ttll) --
     echo "Starting leptonic ..."
     cp -r /afs/cern.ch/user/h/hboucham/public/2D_Alphabet_Inputs/2D18_2LZ_060325  ${OUTDIR}/Zll
@@ -77,10 +79,11 @@ fi ## End conditional: if $FETCH_INPUTS
 if $MERGE_INPUTS; then
     # Prepare inputs
     echo " > Merging categories (LepHi, LepLo, LepIncl, gg0lIncl, VBFjjIncl, VjjIncl, tt0l)"
-    for CAT in LepLo LepHi LepIncl gg0lIncl VBFjjIncl VjjIncl tt0l; do
+    for CAT in LepLo LepHi LepHiT gg0lV VVBFjj HadXLo LepIncl gg0lIncl VBFjjIncl VjjIncl tt0lIncl; do
     	## Producing "Incl" categories also produces Hi/Lo plots
     	echo " > python3 merge_file_script_mctoy.py ${CAT}"
     	python3 merge_file_script_mctoy.py ${CAT}
+	echo " > Done with python3 merge_file_script_mctoy.py ${CAT}"
     done
 
     # Calculate elapsed time 
@@ -90,13 +93,14 @@ if $MERGE_INPUTS; then
     seconds=$((ELAPSED % 60))
     echo "Time to merge standard categories: $hours hour(s), $minutes minute(s), $seconds second(s)"
 
-    echo " > Merging modified LepHi and LepLo categories (A - H)"
-    for mod in A B C D E F G H; do
-    	echo " > python3 merge_file_script_mctoy.py LepLo${mod}"
-    	python3 merge_file_script_mctoy.py LepLo${mod}
-    	echo " > python3 merge_file_script_mctoy.py LepHi${mod}"
-    	python3 merge_file_script_mctoy.py LepHi${mod}
-    done
+    # ## Optional for optimization studies, disabled by default
+    # echo " > Merging modified LepHi and LepLo categories (A - H)"
+    # for mod in A B C D E F G H; do
+    # 	echo " > python3 merge_file_script_mctoy.py LepLo${mod}"
+    # 	python3 merge_file_script_mctoy.py LepLo${mod}
+    # 	echo " > python3 merge_file_script_mctoy.py LepHi${mod}"
+    # 	python3 merge_file_script_mctoy.py LepHi${mod}
+    # done
 fi  ## End conditional: if $MERGE_INPUTS
 
 # Calculate elapsed time 
