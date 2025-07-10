@@ -919,6 +919,7 @@ def _runMLfit(cardOrW, blinding, verbosity, rMin, rMax, setParams, usePreviousFi
     else:              param_options = '--text2workspace "--channel-masks" '
     params_to_set = ','.join(['mask_%s_SIG=1'%r for r in blinding]+['%s=%s'%(p,v) for p,v in setParams.items()]+['r=0.1'])
     param_options += '--setParameters '+params_to_set
+    param_options += ' --robustFit 1 --minos all'
 
     fit_cmd = 'combine -M FitDiagnostics {card_or_w} {param_options} --saveWorkspace --cminDefaultMinimizerStrategy {defMinStrat} --rMin {rmin} --rMax {rmax} -v {verbosity} {extra}'
     fit_cmd = fit_cmd.format(
