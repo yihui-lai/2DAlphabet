@@ -413,7 +413,7 @@ print("Running Haa4b_makeMCtoy.py for the following category:", CAT)
 
 ## "Super-category" defines hadronic directory / file names
 superCat = CAT
-for supr in ['gg0l','VBFjj','Vjj']:
+for supr in ['gg0l','VBFjj','Vjj','tt0l']:
     if CAT.startswith(supr) and CAT != 'gg0lV':
         superCat = supr+'Incl'
 ## Most categories used WP60; only gg0l and VBFjj use WP40
@@ -725,7 +725,8 @@ for DM in DMs:
         for fl in glob.glob(EOS_DIR+'/'+JSON_DIR+'/*'+DM+'toy*'+MHREG+'_'+MAREG+'*'):
             os.remove(fl)
     for iToy in range(NTOYS):
-        with open('jsons/%s_Htoaato4b_%s.json' % (CATL, DM), 'r') as jf:
+        ## Use "MC" settings (i.e. unblinded) for toys 0 - 9
+        with open('jsons/%s_Htoaato4b_%s.json' % (CATL, DM if iToy > 9 else 'MC'), 'r') as jf:
             jsonDM = json.load(jf)  # `data` is now a Python dictionary or list
         jsonDM['PROCESSES']["data_obs"]['ALIAS'] = '%s_%ssmooth2_toy%d_%s_%s_%s' % (CAT, DM, iToy, YEAR, MHREG, MAREG)
         jsonDM['PROCESSES']["data_obs"]['LOC'] = 'path/toys/FILE:HIST'
