@@ -19,26 +19,29 @@ import math
 import numpy as np
 
 VERBOSE = False
-NTOY    = 100       ## Number of toys for goodness-of-fit (GoF) test
-#CAT     = 'gg0lHi' ## Event selection category, e.g. gg0l, VBFjj, Wlv, Zll, Zvv, ...
-CAT = sys.argv[2]
+NTOY    = 100  ## Number of toys for goodness-of-fit (GoF) test
+ITOY    = int(sys.argv[1]) ## Specific toy to run; -1 is MCrounded or Datarounded, -2 is real data
+CAT     = sys.argv[2] ## Event selection category, e.g. gg0lHi, LepLo, VBFjjIncl ...
 TOYSOURCE = str(sys.argv[3]) ## MC, Data
 SIGINJ = '' if len(sys.argv) < 5 else str(sys.argv[4])  ## mA_XX_sigBr_YYY
-OUT_DIR = 'output'
+eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
+EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
+OUT_DIR = 'output' if ITOY < 0 else EOS_DIR+'/output'
 CARD_ONLY = True  ## Just generate cards, don't do any fits, plots, etc.
 
 MHREG   = 'pnet'    ## Higgs mass regression (mass, msoft, pnet)
 MAREG   = '34a'     ## "a" boson mass regression (34a, 34d, 4a)
-#MASSESA = ['15','30','55']  ## Masses of "a" boson
-MASSESA = ['12','20','35','50','60']  ## Masses of "a" boson
-#MASSESA = ['30']  ## Masses of "a" boson
-WP      = 'WP60'    ## Hto4b efficiency working point
+MASSESA = ['12']+[str(mA*5) for mA in range(3,13)]
+if SIGINJ.startswith('mA_'):
+    MASSA = SIGINJ[3:5]
+    assert MASSA in MASSESA, '\nERROR!!! Invalid mass %s from %s. Quitting.' % (MASSA, SIGINJ)
+    MASSESA = [MASSA]
 YEAR    = '2018'    ## Data year
 DATE    = '2025_06_03'
-PATH    = 'plots/'+YEAR+'/'+DATE+'/'+CAT
+PATH    = EOS_DIR+'/plots/'+YEAR+'/'+DATE+'/'+CAT
 UseMCToy   = (TOYSOURCE == 'MC')
 UseDataToy = (TOYSOURCE == 'Data')
-toys=-1
+UseDataObs = (TOYSOURCE == 'Data' and ITOY < 0)
 ## Polynomial fit: "x" for 2D with cross terms, "d" without cross terms
 ## Prefix "e" for exponential, suffix "C" for centered at 0 or "M" for mass ratio
 # FITLIST = ['0x0','1x0','0x1','1x1','1x2','2x1','2x2','1d1','2d1','1d2','2d2','2s2',
@@ -49,23 +52,31 @@ MD_DIR = '/afs/cern.ch/user/m/moanwar/public/'
 AB_DIR = '/afs/cern.ch/work/a/abrinke1/public/HiggsToAA/coffea/eventloop/plots/'
 
 
-if CAT.startswith('gg0l') or CAT.startswith('VBFjj') or CAT.startswith('Vjj'):
+if CAT.startswith('gg0l') or ('VBFjj' in CAT) or CAT.startswith('Had') or CAT.startswith('Vjj') or CAT.startswith('tt0l'):
     SIGS = ['ggH', 'VBFH', 'WH', 'ZH', 'ttH']
 elif CAT.startswith('Lep') or CAT.startswith('Zll') or CAT.startswith('Wlv') or CAT.startswith('ttl') or CAT.startswith('Zvv'):
     SIGS = ['WH','ttH','ZH']
-elif CAT.startswith('tt0l'):
-    SIGS = ['ggH','ttH']  ## VBF, WH, and ZH have no passing signal events
 else: assert False, '\nInvalid category %s!!! Quitting.' % CAT
 
-FITLIST = ['1d1C']
+WP      = 'WP60'    ## Hto4b efficiency working point for most categories
+FITLIST = ['1x1C']  ## Fail --> Pass transfer function for most categories
 NOMTF = 0.05
-if CAT.startswith('gg0l'):
-    #FITLIST = ['0x0smr','1d1C','1x1C']
-    WP      = 'WP40'    ## Hto4b efficiency working point
+if CAT.startswith('Lep'):
+    WP = 'WP60'
+    FITLIST = ['1x1C']
+elif CAT.startswith('gg0l'):
+    WP = 'WP40'
+    FITLIST = ['2s2C']
 elif CAT.startswith('VBFjj'):
-    print('\nERROR!!! VBFjj should include more signal samples!\n')
-    #FITLIST = ['0x0smr','1x1C']
-    WP      = 'WP40'    ## Hto4b efficiency working point
+    WP = 'WP40'
+    FITLIST = ['2s2C']
+elif CAT == 'VVBFjj':
+    WP = 'WP4060'
+    FITLIST = ['2s2C']
+elif CAT == 'HadXLo':
+    WP = 'WP60'
+    FITLIST = ['1x1C']
+
 # elif CAT.startswith('Vjj'):
 #     #FITLIST = ['0x0','0x0smr','1d1C']
 # elif CAT.startswith('LepHi'):  ## WlvHi + ttbblv + ttbll + ttbbll + Zll + ZvvHi
@@ -136,9 +147,9 @@ def _select_signal(row, args):
 def _working_area(fitN):
     working_area = 'fits_%s_Htoaato4b_%s_%s_%s_%s_%s' % (CAT, MHREG, MAREG, WP, fitN, YEAR)
     if UseMCToy:
-        working_area = 'MCtoys/'+working_area+(('_toy%d' % toys) if toys >= 0 else '_MCrounded')
+        working_area = 'MCtoys/'+working_area+(('_toy%d' % ITOY) if ITOY >= 0 else '_MCrounded')
     if UseDataToy:
-        working_area = 'Datatoys/'+working_area+(('_toy%d' % toys) if toys >= 0 else ('_Data' if toys == -2 else '_Datarounded'))
+        working_area = 'Datatoys/'+working_area+(('_toy%d' % ITOY) if ITOY >= 0 else ('_Data' if ITOY == -2 else '_Datarounded'))
     if SIGINJ.startswith('mA_') and '_sigBr_' in SIGINJ:
         working_area += ('_'+SIGINJ)
     if not os.path.exists(OUT_DIR+'/'+working_area):
@@ -149,14 +160,15 @@ def _working_json():
     base_json = 'jsons/%s_Htoaato4b_Data.json' % CAT
     toy_str = ''
     if UseMCToy:
-        toy_str = ('_MCtoy%d.json' % toys) if toys >= 0 else '_MCrounded.json'
+        toy_str = ('_MCtoy%d.json' % ITOY) if ITOY >= 0 else '_MCrounded.json'
         working_json = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT+'/'+base_json[6:].replace('_Data.json', toy_str)
     if UseDataToy:
-        toy_str = ('_Datatoy%d.json' % toys) if toys >= 0 else ('_Data.json' if toys == -2 else '_Datarounded.json')
+        toy_str = ('_Datatoy%d.json' % ITOY) if ITOY >= 0 else ('_Data.json' if ITOY == -2 else '_Datarounded.json')
         working_json = 'jsons/toys/'+YEAR+'/'+DATE+'/'+CAT+'/'+base_json[6:].replace('_Data.json', toy_str)
     if SIGINJ.startswith('mA_') and '_sigBr_' in SIGINJ:
         working_json = working_json.replace('.json', '_'+SIGINJ+'.json')
     working_json = working_json.replace('.json', '_%s_%s.json' % (MHREG, MAREG))
+    if ITOY >= 0: working_json = EOS_DIR+'/'+working_json
     return working_json
         
 def _load_rpf_smear(fitN):
@@ -432,7 +444,7 @@ def test_fit(SRorCR, fitN):
     # supplied (passed to the -d option of Combine). 
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
     twoD = TwoDAlphabet(_working_area(fitN), '%s/runConfig.json' % _working_area(fitN), loadPrevious=True)
-    twoD.MLfit('mA_all_area', rMin=0, rMax=20, verbosity=0)
+    twoD.MLfit('mA_all_area', rMin=0.0, rMax=1.0, verbosity=0)
     # twoD.MLfit('mA_%s_area' % midMA, rMin=0, rMax=20, verbosity=0)
 
 def test_plot(SRorCR, fitN):
@@ -474,7 +486,7 @@ def test_limit(SRorCR, fitN):
         # Run the blinded limit with our dictionary of TF parameters
         twoD.Limit(
             subtag=areaname,
-            blindData=UseDataToy, ## Blind for data and toys thrown from data
+            blindData=UseDataObs, ## Blind for data and toys thrown from data
             verbosity=0,
             setParams=params_to_set,
             condor=False
@@ -530,18 +542,18 @@ def test_SigInj(SRorCR, massA, fitN):
     twoD.SignalInjection(
         areaname, injectAmount=0,
         ntoys=NTOY,
-        blindData=UseDataToy,
+        blindData=UseDataObs,
         setParams=_load_rpf_smear_as_SR(fitN),
         condor=False, njobs=1)
 
 def test_GoF_plot(SRorCR, fitN):
-    '''Plot the GoF in fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<MASSA>_area (condor=True indicates that condor jobs need to be unpacked)'''
     midMA = MASSESA[math.floor(len(MASSESA) / 2)]
+    '''Plot the GoF in fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<midMA>_area (condor=True indicates that condor jobs need to be unpacked)'''
     plot.plot_gof(_working_area(fitN),
                   'mA_%s_area' % midMA, condor=False)
 
 def test_SigInj_plot(SRorCR, massA):
-    '''Plot the signal injection test for r=0 injected and stored in fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<MASSA>_area
+    '''Plot the signal injection test for r=0 injected and stored in fits_<CAT>_Htoaato4b_<MHREG>_<MAREG>_<WP>_<YEAR>/mA_<massA>_area
     (condor=True indicates that condor jobs need to be unpacked)'''
     plot.plot_signalInjection(_working_area(fitN),
                               'mA_%s_area' % massA, injectedAmount=0, condor=False)
@@ -574,7 +586,7 @@ def test_Impacts(SRorCR, massA, fitN):
     # Run the parameter impacts on the toy with the pre-fit workspace/card
     twoD.Impacts(
         'mA_%s_impactArea' % massA,
-        cardOrW='card.txt', blindData=UseDataToy,
+        cardOrW='card.txt', blindData=UseDataObs,
         extra='-t 1 --toysFile %s' % toy_file_path.split('/')[-1]
     )
 
@@ -651,7 +663,6 @@ if __name__ == '__main__':
         if UseMCToy or UseDataToy:
             print("toy ?")
             exit()
-    toys = int(sys.argv[1])
 
     for fitN in FITLIST:
         test_make('SR', fitN)         ## Generate histograms Generic2D objects, including transfer functions
@@ -663,10 +674,10 @@ if __name__ == '__main__':
         test_fit('SR', fitN)          ## Perform fits to data with models
     for fitN in FITLIST:
         test_plot('SR', fitN)         ## Plot data vs. prediction, pre-fit and post-fit
-    for fitN in FITLIST:
-        test_limit('SR', fitN)        ## Compute expected asymptotic limits
-    for fitN in FITLIST:
-        test_GoF('SR', fitN)          ## Perform goodness-of-fit (GoF) test with toys
+    # for fitN in FITLIST:
+    #     test_limit('SR', fitN)        ## Compute expected asymptotic limits
+    # for fitN in FITLIST:
+    #     test_GoF('SR', fitN)          ## Perform goodness-of-fit (GoF) test with toys
     # midMA = MASSESA[math.floor(len(MASSESA) / 2)]
     # test_SigInj('SR', midMA, fitN)       ## Presumably performs some signal injection test (?)
     # test_Impacts('SR', midMA, fitN)      ## Test impact of systematic uncertainties (?)
