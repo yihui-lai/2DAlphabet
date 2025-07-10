@@ -1,12 +1,12 @@
 {
-  "NAME": "tt0l_Htoaato4b",
+  "NAME": "tt0l0b_Htoaato4b",
   "PROCESSES": {
     "data_obs": {
       "SYSTEMATICS":[],
       "SCALE": 1.0,
       "COLOR": 1,
       "TYPE": "DATA",
-      "ALIAS": "tt0l_Data_2018",
+      "ALIAS": "tt0l0b_Data_2018",
       "TITLE": "Data",
       "LOC": "path/FILE:HIST"
     },
@@ -65,9 +65,9 @@
 
   "OPTIONS": {
     "overwrite": true,
-    "blindedPlots": [],
-    "blindedFit": [],
-    "plotPrefitSigInFitB": false,
+    "blindedPlots": ["Pass"],
+    "blindedFit": ["Pass"],
+    "plotPrefitSigInFitB": true,
     "plotUncerts": true,
     "plotTitles": false,
     "year": 2018
