@@ -22,7 +22,6 @@ LEPSIGS  = ['WH', 'ZH', 'ttH']
 MASSESA  = ['12']+[str(mA*5) for mA in range(3,13)]
 MHREGS   = ['mass', 'msoft', 'pnet']
 MAREGS   = ['34a', '34d', '4a']
-WP_CUTS  = ['WP60']  ## Default for most categories
 DATE     = '2025_06_03'
 eos_from_config = [eos for eos in (open('config/user.config','r')).readlines() if eos.startswith('EOS_DIR=')]
 EOS_DIR = eos_from_config[0].replace('EOS_DIR=','').replace('\n','')
@@ -33,7 +32,7 @@ CAT_INS = [CAT_OUT]
 IN_DIR = EOS_DIR+'/raw_inputs/%s/%s/' % (YEAR, DATE)
 
 IS_HAD,IS_LEP = False,False
-for pref in ['gg0l','VBFjj','Vjj','tt0l']:
+for pref in ['Had','gg0l','VBFjj','Vjj','VVBFjj','tt0l']:
     if CAT_OUT.startswith(pref):
         IS_HAD = True
 for pref in ['Lep','Zll','Wlv','ttb','Zvv']:
@@ -43,17 +42,21 @@ assert (IS_HAD or IS_LEP), 'CAT_OUT %s not valid!!! Quitting.' % CAT_OUT
 
 print('\nRunning merge_file_script_mctoy.py for %s' % CAT_OUT)
 if IS_HAD:
-    if CAT_OUT.startswith('gg0l') or CAT_OUT.startswith('VBFjj'):
-        WP_CUTS  = ['WP40', 'WP60']  ## Use WP60 to model WP40
-    if CAT_OUT.endswith('Incl'):
+    if CAT_OUT.endswith('Incl') and not CAT_OUT == 'tt0lIncl':
         CAT_INS = [CAT_OUT.replace('Incl','')+sub for sub in ['Lo','Hi']]
+    if CAT_OUT == 'gg0lV':
+        CAT_INS = ['gg0lLo','gg0lHi','VBFjjLo']
+    if CAT_OUT == 'VVBFjj':
+        CAT_INS = ['VBFjjHi','VjjHi']
+    if CAT_OUT == 'HadXLo':
+        CAT_INS = ['VjjLo','tt0l0b']
     for cat in CAT_INS:
         CATS_IN[cat] = {}
         CATS_IN[cat]['sigs'] = [sig+'toaato4b' for sig in HADSIGS]
         CATS_IN[cat]['bkgs'] = ['QCD_BGen','QCD_bEnr','QCD_Incl','Wqq','Zqq','TT0l','TT1l','MC']  ## Put 'MC' at the end!!!
-        if CAT_OUT.startswith('VBFjj'):
+        if 'VBFjjHi' in CAT_INS or 'VBFjjLo' in CAT_INS or 'VBFjjIncl' in CAT_INS:
             CATS_IN[cat]['bkgs'] = CATS_IN[cat]['bkgs'][0:-1]  ## Does not already have summed MC
-        CATS_IN[cat]['dir']  = IN_DIR+cat
+        CATS_IN[cat]['dir'] = IN_DIR+cat
         if cat.startswith('VBFjj'):
             CATS_IN[cat]['dir']  = IN_DIR+'VBFjj'
 
@@ -67,6 +70,8 @@ elif IS_LEP:
         for pref in ['LepHi','LepIncl']:
             if CAT_OUT.startswith(pref):
                 CAT_INS = CAT_INS+['ZvvHi','Zll','WlvHi','ttbblv','ttbll']
+                if CAT_OUT == 'LepHiT':
+                    CAT_INS = CAT_INS+['tt0l1b']
                 break
         ## Check modifications to lepontic categorization
         if CAT_OUT == 'LepLoA': CAT_INS.remove('WlvLo')
@@ -98,6 +103,8 @@ elif IS_LEP:
             CATS_IN[cat]['bkgs'] = ['Zll','ZZ','Wlv','TT1l','TT2l','ST_s_1l','STop_t','STbar_t','STop_tW_12l','STbar_tW_12l','MC']
         elif cat.startswith('Zvv'):
             CATS_IN[cat]['bkgs'] = ['Wqq','Zqq','TT0l','TT1l','Zvv','Zll','Wlv','ST_s_1l','STop_t','STbar_t','STop_tW_12l','STbar_tW_12l','WW','WZ','ZZ','MC']
+        elif cat == 'tt0l1b':
+            CATS_IN[cat]['bkgs'] = ['Wqq','Zqq','TT0l','TT1l']  ## Drop QCD, thus don't use existing 'MC'
         else:
             assert False, 'Category %s not a valid leptonic category!!! Quitting.' % cat
 ## End conditional: elif IS_LEP
@@ -109,8 +116,17 @@ else:
 OUT_DIR = IN_DIR+'2D_in_merged_'+CAT_OUT+'/'
 ## For use as input to htoaato4b_mctoy.py
 OUT_DIRS = {}
+WP_CUTS = {}
 for cat in [CAT_OUT]+CAT_INS:
     OUT_DIRS[cat] = EOS_DIR+'/plots/'+YEAR+'/'+DATE+'/'+cat+'/'
+    if cat.startswith('gg0l') or cat.startswith('VBFjj'):
+        WP_CUTS[cat] = ['WP40', 'WP60']  ## Use WP60 to model WP40
+    elif cat == 'VVBFjj':
+        WP_CUTS[cat] = ['WP4060','WP60']  ## VBFjj has WP60 to model WP40, Vjj only WP60
+    elif cat == 'VjjHi' and CAT_OUT == 'VVBFjj':
+        WP_CUTS[cat] = ['WP40','WP60']  ## Create "false" WP40 (really still WP60) to add to VBFjj WP40
+    else:
+        WP_CUTS[cat] = ['WP60']  ## Default WP for most categories
 
 
 def main():
@@ -151,10 +167,10 @@ def main():
             samp = sampIn
             if cat.startswith('VBFjj') and sampIn.startswith('JetHT'):
                 samp = 'Data'
-            for wp in WP_CUTS:
+            for wp in WP_CUTS[cat]:
                 if cat.startswith('VBFjj'):
                     in_file_str = CATS_IN[cat]['dir']+'/analyze_htoaa_stage1.root'
-                elif IS_LEP and not cat.startswith('Zvv'):
+                elif IS_LEP and not cat.startswith('Zvv') and not cat.startswith('tt0l'):
                     in_file_str = CATS_IN[cat]['dir']+'/%s/%s_%s_%s.root' % (wp, cat, samp, YEAR)
                 else:
                     in_file_str = CATS_IN[cat]['dir']+'/%s_%s_%s.root' % (cat, samp, YEAR)
@@ -172,6 +188,9 @@ def main():
                         for pf in ['Pass', 'Fail']:
                             h_in_name_read  = '%s_%s_%s_%s_%s_%s_%s_Nom' % (cat, samp, YEAR, mHr, mAr, wp, pf)
                             h_in_name_write = h_in_name_read
+                            ## No real VjjHi WP40; use WP60 to add to VBFjjHi WP40 in VVBFjj
+                            if wp == 'WP40' and cat == 'VjjHi':
+                                h_in_name_read = h_in_name_read.replace('_'+wp+'_', '_WP60_')
                             if cat.startswith('VBFjj'):
                                 ## Translate VBFjj naming convention to standard naming convention. Example:
                                 ## hLeadingFatJetPNet_massH_v2b_vs_34massAa_VBFHi_Xto4bv2_SRWP40_Nom
@@ -198,9 +217,43 @@ def main():
                             else: ## Standard behavior: get histogram from input file
                                 if VERBOSE: print('\nGetting histogram %s' % h_in_name_read)
                                 h_in = in_file.Get(h_in_name_read)
+                                if int(5 / h_in.GetXaxis().GetBinWidth(1)) != 1:
+                                    ## VBF plots used 240 bins from [0, 240] for massH
+                                    if VERBOSE or (sampIn == samps[0] and wp == WP_CUTS[cat][0] and pf == 'Pass'):
+                                        print('\nRebinning x-axis by %d\n' % int(5 / h_in.GetXaxis().GetBinWidth(1)))
+                                    h_in.Rebin2D(int(5 / h_in.GetXaxis().GetBinWidth(1)), 1)
+                                if int(1 / h_in.GetYaxis().GetBinWidth(1)) != 1:
+                                    if VERBOSE or (sampIn == samps[0] and wp == WP_CUTS[cat][0] and pf == 'Pass'):
+                                        print('\nRebinning y-axis by %d\n' % int(1 / h_in.GetYaxis().GetBinWidth(1)))
+                                    h_in.Rebin2D(int(1 / h_in.GetYaxis().GetBinWidth(1)), 1)
                                 if VERBOSE: print('  * Integral = %.1f' % h_in.Integral())
+                                if cat == 'VBFjjHi' and samp == 'QCD_bEnr' and YEAR == '2018' and wp == 'WP60' and pf == 'Pass':
+                                    if h_in.GetMaximum() > 0.05*h_in.Integral():
+                                        print('\n\n\n***** ONE MANUAL ADJUSTMENT!!! *****')
+                                        print('%s has max %.1f, integral %.1f (%.1f%%)' % (h_in.GetName(), h_in.GetMaximum(), h_in.Integral(), 100*h_in.GetMaximum()/h_in.Integral()))
+                                        foundBin = False
+                                        for iX in range(1, h_in.GetNbinsX()+1):
+                                            if foundBin: break
+                                            for iY in range(1, h_in.GetNbinsY()+1):
+                                                if h_in.GetBinContent(iX,iY) != h_in.GetMaximum():
+                                                    continue
+                                                print('Bin (%d,%d) = %.1f +/- %.1f' % (iX, iY, h_in.GetBinContent(iX,iY), h_in.GetBinError(iX,iY)))
 
-                            h_out_name = '%s_%s_%s_%s_%s_%s_%s_Nom' % (CAT_OUT, samp, YEAR, mHr, mAr, wp, pf)
+                                                print('7x7 surrounding integral is %.1f' % h_in.Integral(iX-3,iX+3,iY-3,iY+3))
+                                                print('Setting (%d,%d) to %.2f' % (iX, iY, ((h_in.Integral(iX-3,iX+3,iY-3,iY+3) - h_in.GetMaximum()) / 48.)))
+                                                h_in.SetBinContent(iX,iY, ((h_in.Integral(iX-3,iX+3,iY-3,iY+3) - h_in.GetMaximum()) / 48.))
+                                                h_in.SetBinError(iX,iY, ((h_in.Integral(iX-3,iX+3,iY-3,iY+3) - h_in.GetMaximum()) / 48.))
+                                                print('************************************\n\n\n')
+                                                foundBin = True
+                                                break
+                                            ## End loop: for iY in range(1, h_in.GetNbinsY()+1)
+                                        ## End loop: for iX in range(1, h_in.GetNbinsX()+1)
+                                    ## End conditional: if h_in.GetMaximum() > 0.05*h_in.Integral()
+                                ## End conditional: if cat == 'VBFjjHi' and samp == 'QCD_bEnr' and YEAR == '2018' and pf == 'Pass'
+
+                            wp_out = 'WP4060' if (CAT_OUT == 'VVBFjj' and wp == 'WP40') else wp
+                            assert (wp_out in WP_CUTS[CAT_OUT]), '\nERROR!!! %s wp = %s, wp_out = %s, not in WP_CUTS[%s]. Quitting.' % (cat, wp, wp_out, CAT_OUT)
+                            h_out_name = '%s_%s_%s_%s_%s_%s_%s_Nom' % (CAT_OUT, samp, YEAR, mHr, mAr, wp_out, pf)
                             if not (h_in_name_write in h_ins.keys()):
                                 h_ins[h_in_name_write] = h_in.Clone(h_in_name_write)
                                 if VERBOSE: print('Cloned %s into %s' % (h_in_name_read, h_ins[h_in_name_write].GetName()))
@@ -246,9 +299,10 @@ def main():
                             nYi = h_in.GetNbinsY()
                             iXw = [ii+1 for ii in range(nXi) if h_in.GetXaxis().GetBinLowEdge(ii+1) == 110][0]
                             jXw = [ii for ii in range(nXi) if h_in.GetXaxis().GetBinLowEdge(ii+1) == 140][0]
-                            if (wp == 'WP40') or (not 'WP40' in WP_CUTS):
+                            if (wp == 'WP40') or (not 'WP40' in WP_CUTS[cat]):
                                 if samp == 'Data':
-                                    print('Adding to data: %s (%s)' % (samp, h_in_name_read))
+                                    if VERBOSE or PRINTONLY:
+                                        print('Adding %d to data: %s (%s)' % (h_in.Integral(), samp, h_in_name_read))
                                     if pf == 'Pass':
                                         data_pass += h_in.Integral()
                                     if pf == 'Fail':
@@ -256,14 +310,15 @@ def main():
                                         data_fail_win += h_in.Integral(iXw, jXw, 1, nYi)
                                 if 'Htoaato4b' in samp and '_mA_30' in samp and not 'SumH' in samp:
                                     if pf == 'Pass':
-                                        print('Adding to sig: %s (%s)' % (samp, h_in_name_read))
+                                        if VERBOSE or PRINTONLY:
+                                            print('Adding %.1f to sig: %s (%s)' % (h_in.Integral(), samp, h_in_name_read))
                                         sig_pass += h_in.Integral()
                                         sig_pass_win += h_in.Integral(iXw, jXw, 1, nYi)
-                            ## End conditional: if (wp == 'WP40') or (not 'WP40' in WP_CUTS)
+                            ## End conditional: if (wp == 'WP40') or (not 'WP40' in WP_CUTS[cat])
 
                             if PRINTONLY and not 'Htoaato4b' in samp and (samp == 'Data' or wp == 'WP60'):
                                 print('%s %s %s integral = %.2f' % (wp, pf, samp, h_in.Integral()))
-                                if h_in.GetMaximum() > 0.10*h_in.Integral() or samp == 'MC' or samp == 'SumMC':
+                                if h_in.GetMaximum() > 0.05*h_in.Integral() or samp == 'MC' or samp == 'SumMC':
                                     print('  - Max = %.2f (%.1f%%)' % (h_in.GetMaximum(), 100*h_in.GetMaximum()/h_in.Integral()))
                         ## End loop: for pf in ['Pass', 'Fail']
                     ## End loop: for mAr in MAREGS
@@ -306,7 +361,9 @@ def main():
                             if VERBOSE: print('Wrote out %s' % h_in_name)
                             if VERBOSE: print('  * Integral = %.1f' % h_ins[h_in_name].Integral())
                             ## Write out summed output histogram (overwrite if needed)
-                            h_out_name = '%s_%s_%s_%s_%s_%s_%s_Nom' % (CAT_OUT, samp, YEAR, mHr, mAr, wp, pf)
+                            wp_out = 'WP4060' if (CAT_OUT == 'VVBFjj' and wp == 'WP40') else wp
+                            assert (wp_out in WP_CUTS[CAT_OUT]), '\nERROR!!! %s wp = %s, wp_out = %s, not in WP_CUTS[%s]. Quitting.' % (cat, wp, wp_out, CAT_OUT)
+                            h_out_name = '%s_%s_%s_%s_%s_%s_%s_Nom' % (CAT_OUT, samp, YEAR, mHr, mAr, wp_out, pf)
                             out_file.cd()
                             h_outs[h_out_name].Write('', R.TObject.kOverwrite)
                             out_file2.cd()
@@ -323,16 +380,19 @@ def main():
                 if cat != CAT_OUT:
                     out_file3.Write()
                     out_file3.Close()
-            ## End loop: for wp in WP_CUTS
+            ## End loop: for wp in WP_CUTS[cat]
         ## End loop: for samp in samps
 
+        iWP = 'WP40' if 'WP40' in WP_CUTS[cat] else WP_CUTS[cat][0]
         if data_pass == 0:
             print('Very weird!!! %s data_pass = 0! Setting to 1.' % cat)
             data_pass = 1.0
         data_pass_win = data_fail_win*(data_pass/data_fail)
-        print('\n%s Data pass/fail = %d/%d (%.1f%%), est. %.1f in Higgs window (%.1f%%)' % (cat, data_pass, data_fail, 100*data_pass/data_fail, data_pass_win, 100*data_pass_win/data_pass))
+        print('\n%s %s Data pass/fail = %d/%d (%.1f%%), est. %.1f in Higgs window (%.1f%%)' % (cat, iWP, data_pass, data_fail, 100*data_pass/data_fail, data_pass_win, 100*data_pass_win/data_pass))
         print('30 GeV Signal pass = %.1f, %.1f in window (%.1f%%)' % (sig_pass, sig_pass_win, 100*sig_pass_win/sig_pass))
-        print('S/B = %.2f, S/sqrt(B) = %.2f\n' % (sig_pass_win/data_pass_win, sig_pass_win/math.sqrt(data_pass_win)))
+        print('S/B = %.2f, S/sqrt(B) = %.2f' % (sig_pass_win/data_pass_win, sig_pass_win/math.sqrt(data_pass_win)))
+        if 'WP40' in WP_CUTS[cat]:
+            print('S/B = %.2f, S/sqrt(B) = %.2f for 0.75 X4b SF' % (0.75*sig_pass_win/data_pass_win, 0.75*sig_pass_win/math.sqrt(data_pass_win)))
 
     ## End loop: for cat in CAT_INS
 
