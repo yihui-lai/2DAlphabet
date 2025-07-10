@@ -19,9 +19,9 @@ arguments = $(SUBMIT_TIME)$(Proxy_path)$(ClusterId)$(ProcId)
 # 20 minutes, default
 # +JobFlavour = "espresso"
 # 1 hour
-# +JobFlavour = "microcentury"
++JobFlavour = "microcentury"
 # 2 hours
-+JobFlavour = "longlunch"
+# +JobFlavour = "longlunch"
 # 8 hours
 # +JobFlavour = "workday"
 # +JobFlavour = "tomorrow" # 1 day
