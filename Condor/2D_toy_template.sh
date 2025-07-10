@@ -6,4 +6,4 @@ cd /afs/cern.ch/work/a/abrinke1/public/HiggsToAA/2DAlphabet/CMSSW_11_3_4/src/
 cmsenv
 source twoD-env/bin/activate
 cd 2DAlphabet
-bash condor_run_toy.sh NTOY DMC CAT
+bash run_toy.sh NTOY DMC CAT MASSA FIT SINJ
